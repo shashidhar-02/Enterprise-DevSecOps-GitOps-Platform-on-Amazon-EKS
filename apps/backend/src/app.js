@@ -2,6 +2,7 @@ import express from 'express';
 import helmet from 'helmet';
 import morgan from 'morgan';
 import mongoose from 'mongoose';
+import rateLimit from 'express-rate-limit';
 import { Product } from './models/Product.js';
 import { Cart } from './models/Cart.js';
 import { Order } from './models/Order.js';
@@ -26,6 +27,16 @@ export function createApp() {
   app.get('/api/health', (_req, res) => {
     res.json({ status: 'ok', service: 'cloudmart-backend' });
   });
+
+  // Apply rate limiting middleware to protect other API endpoints from abuse/DoS attacks
+  const limiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 100, // Limit each IP to 100 requests per window
+    standardHeaders: true, // Return rate limit info in standard RateLimit headers
+    legacyHeaders: false, // Disable X-RateLimit headers
+    message: { message: 'Too many requests, please try again later.' }
+  });
+  app.use(limiter);
 
   /**
    * @route GET /api/products
