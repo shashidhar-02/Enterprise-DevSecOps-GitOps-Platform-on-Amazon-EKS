@@ -1,6 +1,7 @@
 import express from 'express';
 import helmet from 'helmet';
 import morgan from 'morgan';
+import mongoose from 'mongoose';
 import { Product } from './models/Product.js';
 import { Cart } from './models/Cart.js';
 import { Order } from './models/Order.js';
@@ -51,6 +52,10 @@ export function createApp() {
   app.post('/api/cart/:userId/items', async (req, res, next) => {
     try {
       const { productId, quantity = 1 } = req.body;
+      if (typeof productId !== 'string' || !mongoose.Types.ObjectId.isValid(productId)) {
+        return res.status(400).json({ message: 'Invalid productId' });
+      }
+
       const product = await Product.findById(productId);
       if (!product) {
         return res.status(404).json({ message: 'Product not found' });
