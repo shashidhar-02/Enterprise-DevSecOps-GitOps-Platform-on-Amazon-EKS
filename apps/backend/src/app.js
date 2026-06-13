@@ -81,7 +81,10 @@ export function createApp() {
   app.post('/api/orders', async (req, res, next) => {
     try {
       const { userId } = req.body;
-      const cart = await Cart.findOne({ userId });
+      if (typeof userId !== 'string') {
+        return res.status(400).json({ message: 'Invalid userId' });
+      }
+      const cart = await Cart.findOne({ userId: { $eq: userId } });
 
       if (!cart || cart.items.length === 0) {
         return res.status(400).json({ message: 'Cart is empty' });
