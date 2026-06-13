@@ -131,18 +131,19 @@ export function createApp() {
   app.post('/api/orders', async (req, res, next) => {
     try {
       const { userId } = req.body;
-      if (!userId) {
-        return res.status(400).json({ message: 'userId is required' });
+      if (typeof userId !== 'string' || !mongoose.Types.ObjectId.isValid(userId)) {
+        return res.status(400).json({ message: 'Valid userId is required' });
       }
+      const normalizedUserId = String(userId);
 
-      const cart = await Cart.findOne({ userId });
+      const cart = await Cart.findOne({ userId: { $eq: normalizedUserId } });
       if (!cart || cart.items.length === 0) {
         return res.status(400).json({ message: 'Cart is empty' });
       }
 
       const total = cart.items.reduce((sum, item) => sum + item.price * item.quantity, 0);
       const order = await Order.create({
-        userId,
+        userId: normalizedUserId,
         items: cart.items,
         total,
         status: 'PLACED',
