@@ -1,23 +1,22 @@
-name: CloudMart CI CD
+name: CloudMart DevOps Pipeline
 
 on:
   push:
     branches:
-      - main
       - devops
   pull_request:
     branches:
-      - main
       - devops
 
 jobs:
   backend-test:
+    name: Backend Test
     runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: apps/backend
     steps:
-      - name: Checkout
+      - name: Checkout code
         uses: actions/checkout@v4
 
       - name: Setup Node.js
@@ -28,18 +27,19 @@ jobs:
           cache-dependency-path: apps/backend/package.json
 
       - name: Install dependencies
-        run: npm install
+        run: npm ci
 
       - name: Run backend tests
         run: npm test
 
   frontend-build:
+    name: Frontend Build & Archive
     runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: apps/frontend
     steps:
-      - name: Checkout
+      - name: Checkout code
         uses: actions/checkout@v4
 
       - name: Setup Node.js
@@ -50,18 +50,27 @@ jobs:
           cache-dependency-path: apps/frontend/package.json
 
       - name: Install dependencies
-        run: npm install
+        run: npm ci
 
       - name: Build frontend
         run: npm run build
 
+      # Archive/artifactory practice: Upload frontend static assets
+      - name: Archive frontend build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-dist
+          path: apps/frontend/dist/
+          retention-days: 5
+
   devsecops-scans:
+    name: DevSecOps Audits
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0 # Shallow clones should be disabled for a better relevancy of SonarCloud analysis
+          fetch-depth: 0
 
       - name: Run Trivy filesystem vulnerability scan
         uses: aquasecurity/trivy-action@master
@@ -69,29 +78,20 @@ jobs:
           scan-type: 'fs'
           scan-ref: '.'
           format: 'table'
-          exit-code: '0' # Keep pipeline green for demonstration, flag warnings in report
+          exit-code: '0'
           severity: 'CRITICAL,HIGH'
 
       - name: Run Semgrep SAST analysis
         uses: semgrep/semgrep-action@v1
         with:
           config: 'p/security-extended'
-        continue-on-error: true # Safe fallback if repository lacks Semgrep Cloud token
+        continue-on-error: true
 
       - name: Run Gitleaks secret scan
         uses: gitleaks/gitleaks-action@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        continue-on-error: true # Safe fallback if not run in PR context
-
-      - name: Run Checkov IaC security scan
-        uses: bridgecrewio/checkov-action@master
-        with:
-          directory: terraform/
-          framework: terraform
-          quiet: true
-          output_format: cli
-          soft_fail: true # Soft fail to audit issues without blocking deployment
+        continue-on-error: true
 
       - name: SonarCloud Code Quality Scan
         uses: SonarSource/sonarcloud-github-action@master
@@ -103,7 +103,30 @@ jobs:
             -Dsonar.projectKey=Enterprise-DevSecOps-GitOps-Platform
             -Dsonar.organization=shashidhar-02
             -Dsonar.sources=apps/backend/src,apps/frontend/src
-            -Dsonar.javascript.lcov.reportPaths=apps/backend/coverage/lcov.info
             -Dsonar.host.url=https://sonarcloud.io
         continue-on-error: true
 
+  infra-validation:
+    name: Infrastructure Validation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run Checkov IaC security scan
+        uses: bridgecrewio/checkov-action@master
+        with:
+          directory: terraform/
+          framework: terraform
+          quiet: true
+          output_format: cli
+          soft_fail: true
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: 'v3.14.0'
+
+      - name: Lint Helm Chart
+        run: |
+          helm lint gitops/charts/cloudmart
