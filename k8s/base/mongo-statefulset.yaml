@@ -1,0 +1,35 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: cloudmart-mongo
+  namespace: cloudmart
+spec:
+  serviceName: cloudmart-mongo
+  replicas: 1
+  selector:
+    matchLabels:
+      app: cloudmart-mongo
+  template:
+    metadata:
+      labels:
+        app: cloudmart-mongo
+    spec:
+      containers:
+        - name: mongo
+          image: mongo:7
+          ports:
+            - containerPort: 27017
+          env:
+            - name: MONGO_INITDB_DATABASE
+              value: cloudmart
+          volumeMounts:
+            - name: data
+              mountPath: /data/db
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 10Gi

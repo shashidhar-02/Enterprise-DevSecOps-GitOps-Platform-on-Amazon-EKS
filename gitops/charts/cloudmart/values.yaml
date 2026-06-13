@@ -1,0 +1,14 @@
+namespace: cloudmart
+frontend:
+  image: 123456789012.dkr.ecr.us-east-1.amazonaws.com/cloudmart-frontend
+  tag: latest
+  replicas: 2
+backend:
+  image: 123456789012.dkr.ecr.us-east-1.amazonaws.com/cloudmart-backend
+  tag: latest
+  replicas: 2
+mongo:
+  image: mongo:7
+  storage: 10Gi
+ingress:
+  host: cloudmart.local
