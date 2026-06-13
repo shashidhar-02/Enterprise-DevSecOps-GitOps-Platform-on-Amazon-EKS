@@ -1,0 +1,33 @@
+version: '3.9'
+services:
+  mongo:
+    image: mongo:7
+    container_name: cloudmart-mongo
+    ports:
+      - '27017:27017'
+    volumes:
+      - mongo_data:/data/db
+
+  backend:
+    build:
+      context: ./apps/backend
+    container_name: cloudmart-backend
+    environment:
+      PORT: 8080
+      MONGO_URI: mongodb://mongo:27017/cloudmart
+    depends_on:
+      - mongo
+    ports:
+      - '8080:8080'
+
+  frontend:
+    build:
+      context: ./apps/frontend
+    container_name: cloudmart-frontend
+    depends_on:
+      - backend
+    ports:
+      - '80:80'
+
+volumes:
+  mongo_data:
