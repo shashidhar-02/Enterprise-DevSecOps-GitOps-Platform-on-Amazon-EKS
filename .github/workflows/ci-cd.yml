@@ -72,13 +72,16 @@ jobs:
           cache: 'npm'
           cache-dependency-path: "${{ matrix.component }}/package-lock.json"
 
-      - name: Install Frontend Dependencies
-        working-directory: frontend  # <--- MUST MATCH FOLDER NAME
-        run: npm ci
-
-      - name: Install Backend Dependencies
-        working-directory: backend   # <--- MUST MATCH FOLDER NAME
-        run: npm ci
+       - name: Install dependencies
+        working-directory: ${{ matrix.component }}
+        # This will install using the lockfile if it exists, 
+        # or fall back to npm install if it doesn't.
+        run: |
+          if [ -f package-lock.json ]; then
+            npm ci
+          else
+            npm install
+          fi
 
       # npm audit for known vulnerabilities (fail on high/critical)
       - name: npm audit
