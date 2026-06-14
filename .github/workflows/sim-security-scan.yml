@@ -1,30 +1,48 @@
-# .github/workflows/sim-security-scan.yml
-# Place this file in your repo at: .github/workflows/sim-security-scan.yml
-
 name: CraveDrop AI Security Scanner
 
 on:
   pull_request:
-    types: [opened, synchronize, reopened]
+    types:
+      - opened
+      - synchronize
+      - reopened
 
 jobs:
   security-scan:
     runs-on: ubuntu-latest
+
     steps:
       - name: Trigger Sim.ai Security Scan
+        env:
+          SIM_API_KEY: ${{ secrets.SIM_API_KEY }}
+          WORKFLOW_URL: https://sim.ai/api/workflows/45d62250-3c46-430d-8cf8-ba658804b20f/execute
+
         run: |
-          curl -s -X POST \
-            "https://sim.ai/api/workflows/45d62250-3c46-430d-8cf8-ba658804b20f/execute" \
+          set -euo pipefail
+
+          HTTP_STATUS=$(curl \
+            --silent \
+            --show-error \
+            --fail \
+            --connect-timeout 10 \
+            --max-time 60 \
+            --output response.json \
+            --write-out "%{http_code}" \
+            -X POST "$WORKFLOW_URL" \
             -H "Content-Type: application/json" \
-            -H "x-api-key: ${{ secrets.SIM_API_KEY }}" \
+            -H "x-api-key: ${SIM_API_KEY}" \
             -d '{
               "action": "${{ github.event.action }}",
               "number": ${{ github.event.pull_request.number }},
               "pull_request": {
                 "title": ${{ toJSON(github.event.pull_request.title) }},
                 "body": ${{ toJSON(github.event.pull_request.body) }},
-                "user": { "login": "${{ github.event.pull_request.user.login }}" },
-                "head": { "sha": "${{ github.event.pull_request.head.sha }}" },
+                "user": {
+                  "login": "${{ github.event.pull_request.user.login }}"
+                },
+                "head": {
+                  "sha": "${{ github.event.pull_request.head.sha }}"
+                },
                 "html_url": "${{ github.event.pull_request.html_url }}",
                 "state": "${{ github.event.pull_request.state }}",
                 "additions": ${{ github.event.pull_request.additions }},
@@ -34,9 +52,22 @@ jobs:
               "repository": {
                 "full_name": "${{ github.repository }}",
                 "name": "${{ github.event.repository.name }}",
-                "owner": { "login": "${{ github.repository_owner }}" },
+                "owner": {
+                  "login": "${{ github.repository_owner }}"
+                },
                 "private": ${{ github.event.repository.private }}
               },
-              "sender": { "login": "${{ github.actor }}" }
-            }'
-          echo "✅ Security scan triggered successfully for CraveDrop"
+              "sender": {
+                "login": "${{ github.actor }}"
+              }
+            }')
+
+          echo "HTTP Status: ${HTTP_STATUS}"
+
+          if [ "${HTTP_STATUS}" -lt 200 ] || [ "${HTTP_STATUS}" -ge 300 ]; then
+            echo "Security scan trigger failed."
+            cat response.json
+            exit 1
+          fi
+
+          echo "Security scan triggered successfully."
