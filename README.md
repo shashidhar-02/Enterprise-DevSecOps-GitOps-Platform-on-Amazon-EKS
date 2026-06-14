@@ -17,6 +17,7 @@
 
 <br />
 
+<!-- 📸 Replace the link below with a screenshot of your actual app! -->
 <img src="https://via.placeholder.com/800x400/1a1a1a/ffffff?text=📸+Drop+Your+App+Screenshot+Here" alt="CraveDrop UI Screenshot" style="border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.2);">
 
 </div>
@@ -29,23 +30,25 @@
 >
 > ```bash
 > git checkout devops
-> ```
+> 
+
+```
 
 ---
 
 ## ✨ Features
 
-- 🍕 **Browse Restaurants:** Explore full menus, categories, and vibrant UI cards.
-- 🛒 **Place Orders:** Seamless checkout experience and delivery tracking.
-- ⭐ **Leave Reviews:** Rate your favorite meals and share your foodie opinions.
-- 🗑️ **Manage Platform:** Cancel active orders or remove restaurants dynamically.
-- 🎨 **Cinematic UI:** Gen-Z dark mode with glassmorphism, smooth gradients, and clean aesthetics.
+* 🍕 **Browse Restaurants:** Explore full menus, categories, and vibrant UI cards.
+* 🛒 **Place Orders:** Seamless checkout experience and delivery tracking.
+* ⭐ **Leave Reviews:** Rate your favorite meals and share your foodie opinions.
+* 🗑️ **Manage Platform:** Cancel active orders or remove restaurants dynamically.
+* 🎨 **Cinematic UI:** Gen-Z dark mode with glassmorphism, smooth gradients, and clean aesthetics.
 
 ## 🏗️ Architecture
 
 ```text
 ┌──────────────┐     ┌──────────────┐     ┌──────────────┐
-│   Frontend   │────▶│   Backend    │────▶│  PostgreSQL   │
+│   Frontend   │────▶│   Backend    │────▶│  PostgreSQL  │
 │   (React +   │◀────│  (Node.js +  │◀────│              │
 │    Nginx)    │     │   Express)   │     │              │
 │   Port 80    │     │  Port 5000   │     │  Port 5432   │
@@ -207,3 +210,8 @@ npm run dev
 | **`devops`** | Full DevSecOps — Docker, Kubernetes (EKS), Terraform, CI/CD pipeline, security scanning |
 
 ---
+
+
+```
+
+```
