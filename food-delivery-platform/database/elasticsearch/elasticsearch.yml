@@ -1,4 +1,0 @@
-cluster.name: "fd-es-cluster"
-network.host: 0.0.0.0
-xpack.security.enabled: false
-discovery.type: single-node

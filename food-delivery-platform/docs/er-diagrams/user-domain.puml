@@ -1,5 +1,0 @@
-@startuml
-Entity User {
-  *id : UUID
-}
-@enduml
