@@ -1,15 +1,26 @@
-It looks like you might have accidentally copied the rendered rich text instead of the raw code!
 
-Here is the exact raw Markdown code block for you to copy and paste directly into your `README.md` file so all the formatting, tables, code blocks, and emojis render perfectly on GitHub.
 
-```markdown
-# 🍔 CraveDrop — Food Delivery Platform
 
-A Gen-Z vibe food delivery platform built with a 3-tier architecture — React frontend, Node.js backend, and PostgreSQL database.
+<div align="center">
 
-![Tech Stack](https://img.shields.io/badge/React-18-61DAFB?style=flat-square&logo=react)
-![Tech Stack](https://img.shields.io/badge/Node.js-20-339933?style=flat-square&logo=node.js)
-![Tech Stack](https://img.shields.io/badge/PostgreSQL-16-4169E1?style=flat-square&logo=postgresql)
+# 🍔 CraveDrop
+
+**A Gen-Z vibe food delivery platform built with a modern 3-tier architecture.** *React Frontend • Node.js API • PostgreSQL Database*
+
+<br />
+
+![React](https://img.shields.io/badge/React-18-61DAFB?style=for-the-badge&logo=react&logoColor=black)
+![Node.js](https://img.shields.io/badge/Node.js-20-339933?style=for-the-badge&logo=node.js&logoColor=white)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?style=for-the-badge&logo=postgresql&logoColor=white)
+![Nginx](https://img.shields.io/badge/Nginx-009639?style=for-the-badge&logo=nginx&logoColor=white)
+![AWS EC2](https://img.shields.io/badge/AWS_EC2-FF9900?style=for-the-badge&logo=amazonaws&logoColor=white)
+
+<br />
+
+<!-- 📸 Replace the link below with a screenshot of your actual app! -->
+<img src="https://via.placeholder.com/800x400/1a1a1a/ffffff?text=📸+Drop+Your+App+Screenshot+Here" alt="CraveDrop UI Screenshot" style="border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.2);">
+
+</div>
 
 ---
 
@@ -19,30 +30,31 @@ A Gen-Z vibe food delivery platform built with a 3-tier architecture — React f
 >
 > ```bash
 > git checkout devops
-> ```
+> 
+
+
 
 ---
 
 ## ✨ Features
 
-- 🍕 **Browse Restaurants** with full menus and categories
-- 🛒 **Place Orders** and track delivery status
-- ⭐ **Leave Reviews** and rate your favorite meals
-- 🗑️ **Cancel Orders** or remove restaurants from the platform
-- 🎨 **Gen-Z dark UI** with glassmorphism and smooth gradients
+* 🍕 **Browse Restaurants:** Explore full menus, categories, and vibrant UI cards.
+* 🛒 **Place Orders:** Seamless checkout experience and delivery tracking.
+* ⭐ **Leave Reviews:** Rate your favorite meals and share your foodie opinions.
+* 🗑️ **Manage Platform:** Cancel active orders or remove restaurants dynamically.
+* 🎨 **Cinematic UI:** Gen-Z dark mode with glassmorphism, smooth gradients, and clean aesthetics.
 
 ## 🏗️ Architecture
 
 ```text
 ┌──────────────┐     ┌──────────────┐     ┌──────────────┐
-│   Frontend   │────▶│   Backend    │────▶│  PostgreSQL   │
+│   Frontend   │────▶│   Backend    │────▶│  PostgreSQL  │
 │   (React +   │◀────│  (Node.js +  │◀────│              │
 │    Nginx)    │     │   Express)   │     │              │
 │   Port 80    │     │  Port 5000   │     │  Port 5432   │
 └──────────────┘     └──────────────┘     └──────────────┘
 
 ```
-
 ## 📁 Project Structure
 
 ```text
@@ -100,33 +112,33 @@ chmod +x deploy/setup.sh
 
 ```
 
-This script will:
+**This script will automatically:**
 
-1. Update system packages
-2. Install **Node.js 20.x**, **PostgreSQL 16**, **Nginx**, and **PM2**
-3. Create the database (`cravedrop_db`) and user
-4. Install backend dependencies & auto-generate `.env`
-5. Build the React frontend
-6. Configure Nginx as a reverse proxy
-7. Start the backend with PM2 (auto-restarts on crash/reboot)
+1. Update system packages.
+2. Install **Node.js 20.x**, **PostgreSQL 16**, **Nginx**, and **PM2**.
+3. Create the database (`cravedrop_db`) and secure user profile.
+4. Install backend dependencies & generate the `.env` file.
+5. Build the optimized React frontend.
+6. Configure Nginx as a secure reverse proxy.
+7. Start the backend with PM2 (ensuring it auto-restarts on crash/reboot).
 
 ### Step 4: Access the App
 
-Open your browser and go to:
+Open your browser and navigate to your public IP:
 
 ```text
 http://<EC2_PUBLIC_IP>
 
 ```
 
-### Useful Commands
+### Useful Server Commands
 
 ```bash
 pm2 status                            # Check backend status
-pm2 logs                              # View backend logs
+pm2 logs                              # View live backend logs
 pm2 restart all                       # Restart backend
-sudo systemctl restart nginx          # Restart Nginx
-sudo -u postgres psql -d cravedrop_db # Connect to database
+sudo systemctl restart nginx          # Restart Nginx server
+sudo -u postgres psql -d cravedrop_db # Connect to production database
 
 ```
 
@@ -139,7 +151,7 @@ sudo -u postgres psql -d cravedrop_db # Connect to database
 * Node.js 20+
 * PostgreSQL 16+
 
-### Backend
+### 1. Backend Setup
 
 ```bash
 cd backend
@@ -157,7 +169,7 @@ npm start
 
 ```
 
-### Frontend
+### 2. Frontend Setup
 
 ```bash
 cd frontend
@@ -166,7 +178,7 @@ npm run dev
 
 ```
 
-The Vite dev server starts on `http://localhost:3000` and proxies `/api` requests to the backend at `http://localhost:5000`.
+> **Note:** The Vite dev server starts on `http://localhost:3000` and automatically proxies all `/api` requests to the backend at `http://localhost:5000`.
 
 ---
 
@@ -174,18 +186,18 @@ The Vite dev server starts on `http://localhost:3000` and proxies `/api` request
 
 | Method | Endpoint | Description |
 | --- | --- | --- |
-| GET | `/api/health` | Health check |
-| GET | `/api/restaurants` | Get all restaurants with review counts |
-| GET | `/api/restaurants/:id` | Get single restaurant with its reviews |
-| POST | `/api/restaurants` | Add a new restaurant |
-| PUT | `/api/restaurants/:id` | Update restaurant details |
-| DELETE | `/api/restaurants/:id` | Remove a restaurant |
-| POST | `/api/orders` | Place a new food order |
-| GET | `/api/orders/user/:userId` | Get order history for a specific user |
-| DELETE | `/api/orders/:id` | Cancel an order |
-| GET | `/api/reviews/restaurant/:id` | Get reviews for a specific restaurant |
-| POST | `/api/reviews` | Leave a review and rating |
-| DELETE | `/api/reviews/:id` | Delete a review |
+| `GET` | `/api/health` | Health check |
+| `GET` | `/api/restaurants` | Get all restaurants with review counts |
+| `GET` | `/api/restaurants/:id` | Get single restaurant with its reviews |
+| `POST` | `/api/restaurants` | Add a new restaurant |
+| `PUT` | `/api/restaurants/:id` | Update restaurant details |
+| `DELETE` | `/api/restaurants/:id` | Remove a restaurant |
+| `POST` | `/api/orders` | Place a new food order |
+| `GET` | `/api/orders/user/:userId` | Get order history for a specific user |
+| `DELETE` | `/api/orders/:id` | Cancel an order |
+| `GET` | `/api/reviews/restaurant/:id` | Get reviews for a specific restaurant |
+| `POST` | `/api/reviews` | Leave a review and rating |
+| `DELETE` | `/api/reviews/:id` | Delete a review |
 
 ---
 
@@ -193,12 +205,11 @@ The Vite dev server starts on `http://localhost:3000` and proxies `/api` request
 
 | Branch | Purpose |
 | --- | --- |
-| `main` | Source code + EC2 bare-metal deployment |
-| `devops` | Full DevSecOps — Docker, Kubernetes (EKS), Terraform, CI/CD pipeline, security scanning |
+| **`main`** | Source code + EC2 bare-metal deployment |
+| **`devops`** | Full DevSecOps — Docker, Kubernetes (EKS), Terraform, CI/CD pipeline, security scanning |
 
 ---
 
-Built with 🍕 by the CraveDrop team. No cap, this delivery app hits different. 🛵
 
 ```
 
