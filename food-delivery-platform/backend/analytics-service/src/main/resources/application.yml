@@ -1,0 +1,5 @@
+spring:
+  application:
+    name: analytics-service
+server:
+  port: 8080

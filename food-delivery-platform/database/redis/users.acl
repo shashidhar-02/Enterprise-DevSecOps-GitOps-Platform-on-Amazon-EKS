@@ -1,0 +1,2 @@
+user default on >redispass ~* &* +@all
+user apigateway on >gatewaypass ~* &* +@all

@@ -1,0 +1,5 @@
+@startuml
+Entity Order {
+  *id : UUID
+}
+@enduml
