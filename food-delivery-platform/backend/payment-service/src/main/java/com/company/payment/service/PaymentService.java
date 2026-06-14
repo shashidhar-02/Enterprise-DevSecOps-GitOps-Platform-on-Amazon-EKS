@@ -19,7 +19,7 @@ public class PaymentService {
         log.info("Processing payment for order: {} amount: {}", orderId, amount);
         Payment payment = new Payment();
         payment.setOrderId(orderId);
-        payment.setAmount(amount);
+        payment.setAmount(java.math.BigDecimal.valueOf(amount));
         payment.setStatus("COMPLETED");
         payment.setPaymentMethod(method);
         return paymentRepository.save(payment);

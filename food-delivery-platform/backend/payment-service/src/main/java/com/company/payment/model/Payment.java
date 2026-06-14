@@ -14,4 +14,5 @@ public class Payment {
     private UUID orderId;
     private BigDecimal amount;
     private String status;
+    private String paymentMethod;
 }
