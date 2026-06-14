@@ -100,4 +100,3 @@ jobs:
             --data @payload.json
 
           echo "✅ Security scan triggered successfully for CraveDrop"
-```
