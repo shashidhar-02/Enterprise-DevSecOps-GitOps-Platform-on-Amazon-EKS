@@ -54,7 +54,7 @@ jobs:
   # ==============================================================
   # STAGE 2: Software Composition Analysis (SCA) — Dependency Audit
   # ==============================================================
- sca:
+sca:
     name: "🛡️ Dependency Audit"
     runs-on: ubuntu-latest
     needs: lint
