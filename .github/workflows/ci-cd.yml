@@ -10,8 +10,8 @@ on:
     branches: ["*"]
 
 permissions:
-  contents: write # Increased to write, needed for manifest updates
-  packages: write
+  contents: read # Increased to write, needed for manifest updates
+
 
 env:
   DOCKER_REGISTRY: ghcr.io
