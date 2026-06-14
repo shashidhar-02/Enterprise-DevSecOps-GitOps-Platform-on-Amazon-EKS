@@ -31,7 +31,7 @@ spring:
                 redis-rate-limiter.requestedTokens: 1
 
 jwt:
-  secret: ${JWT_SECRET:bXlzdXBlcnNlY3JldGtleXRoYXRpc2F0bGVhc3QyNTZiaXRzbG9uZ2Jhc2U2NA==}
+  secret: ${JWT_SECRET:}
 
 management:
   endpoints:

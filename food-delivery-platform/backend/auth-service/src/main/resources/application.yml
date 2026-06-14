@@ -17,5 +17,5 @@ spring:
         dialect: org.hibernate.dialect.PostgreSQLDialect
 
 jwt:
-  secret: ${JWT_SECRET:bXlzdXBlcnNlY3JldGtleXRoYXRpc2F0bGVhc3QyNTZiaXRzbG9uZ2Jhc2U2NA==}
+  secret: ${JWT_SECRET:}
   expiration: ${JWT_EXPIRATION:86400000}

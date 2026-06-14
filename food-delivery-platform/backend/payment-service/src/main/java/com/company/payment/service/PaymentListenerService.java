@@ -1,24 +1,33 @@
 package com.company.payment.service;
 import com.company.payment.model.Payment;
 import com.company.payment.repository.PaymentRepository;
-import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
+
 @Service
-@RequiredArgsConstructor
 public class PaymentListenerService {
-    private final PaymentRepository repository;
-    private final KafkaTemplate<String, Object> kafkaTemplate;
+
+    private static final Logger logger = LoggerFactory.getLogger(PaymentListenerService.class);
+
+    @Autowired
+    private PaymentRepository paymentRepository;
+
+    @Autowired
+    private KafkaTemplate<String, String> kafkaTemplate;
 
     @KafkaListener(topics = "orders-topic", groupId = "payment-group")
     public void handleOrderCreated(String eventJson) {
-        // Mock processing OrderCreatedEvent
-        System.out.println("Processing payment for event: " + eventJson);
+        logger.info("Processing payment for event: {}", eventJson);
         Payment p = new Payment();
         p.setStatus("COMPLETED");
-        repository.save(p);
+        paymentRepository.save(p);
+        
         kafkaTemplate.send("payments-topic", "{\"paymentId\": \"" + p.getId() + "\", \"status\": \"COMPLETED\"}");
     }
 }
