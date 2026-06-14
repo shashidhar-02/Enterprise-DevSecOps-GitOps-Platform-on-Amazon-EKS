@@ -11,7 +11,9 @@ COPY package.json package-lock.json ./
 RUN npm ci && npm cache clean --force
 
 # Copy the rest of the source code and build
-COPY . .
+COPY src/ ./src
+COPY public/ ./public
+COPY vite.config.js index.html ./
 RUN npm run build
 
 # ---- Production stage ----
