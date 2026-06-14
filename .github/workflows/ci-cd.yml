@@ -1,5 +1,5 @@
 # ==============================================================
-# CraveDrop - DevSecOps CI/CD Pipeline
+# CraveDrop - Unified DevSecOps CI/CD Pipeline
 # ==============================================================
 name: CraveDrop DevSecOps Pipeline
 
@@ -19,14 +19,14 @@ env:
 
 jobs:
   lint:
-    name: "🔍 Lint Code"
+    name: "🔍 Lint"
     runs-on: ubuntu-latest
     strategy:
       matrix:
         component: [backend, frontend]
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-      - uses: actions/setup-node@1d0ff469b7ec7b3ea9d8d73d29a597a7a379435b # v4.1.0
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: actions/setup-node@1d0ff469b7ec7b3ea9d8d73d29a597a7a379435b
         with:
           node-version: "20"
           cache: "npm"
@@ -37,19 +37,14 @@ jobs:
         run: npm run lint
 
   sca:
-    name: "🛡️ Dependency Audit"
+    name: "🛡️ SCA"
     runs-on: ubuntu-latest
     needs: lint
     strategy:
       matrix:
         component: [backend, frontend]
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-      - uses: actions/setup-node@1d0ff469b7ec7b3ea9d8d73d29a597a7a379435b # v4.1.0
-        with:
-          node-version: "20"
-          cache: "npm"
-          cache-dependency-path: "${{ matrix.component }}/package-lock.json"
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
       - working-directory: ${{ matrix.component }}
         run: |
           if [ -f package-lock.json ]; then npm ci; else npm install; fi
@@ -57,7 +52,7 @@ jobs:
         run: npm audit --audit-level=high || true
 
   build:
-    name: "🐳 Build ${{ matrix.component }}"
+    name: "🐳 Build"
     runs-on: ubuntu-latest
     needs: sca
     permissions:
@@ -67,21 +62,19 @@ jobs:
       matrix:
         component: [backend, frontend]
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-      - uses: docker/setup-buildx-action@c47758b7754f59c84e1b72186716a49590b5349e # v3.7.0
-      - uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 # v3.3.0
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: docker/setup-buildx-action@c47758b7754f59c84e1b72186716a49590b5349e
+      - uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
       - id: meta
-        uses: docker/metadata-action@8e5442c4ef9f787516d2673d32831512f455325c # v5.6.1
+        uses: docker/metadata-action@8e5442c4ef9f787516d2673d32831512f455325c
         with:
           images: ghcr.io/${{ github.repository }}/cravedrop-${{ matrix.component }}
-          tags: |
-            type=sha,prefix=
-            type=raw,value=latest,enable={{is_default_branch}}
-      - uses: docker/build-push-action@4f58ea79222b3b0d2c77bd6b1e56b3e839e083c2 # v6.8.0
+          tags: type=sha,prefix=
+      - uses: docker/build-push-action@4f58ea79222b3b0d2c77bd6b1e56b3e839e083c2
         with:
           context: ./${{ matrix.component }}
           push: ${{ github.event_name != 'pull_request' }}
@@ -92,16 +85,16 @@ jobs:
           sbom: true
 
   image-scan:
-    name: "🔬 Scan Image"
+    name: "🔬 Trivy Scan"
     runs-on: ubuntu-latest
     needs: build
     strategy:
       matrix:
         component: [backend, frontend]
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
       - run: docker build -t cravedrop-${{ matrix.component }}:scan ./${{ matrix.component }}
-      - uses: aquasecurity/trivy-action@51ebbe4198d021c1f541258d98d28a5061619a3b # master
+      - uses: aquasecurity/trivy-action@51ebbe4198d021c1f541258d98d28a5061619a3b
         with:
           image-ref: "cravedrop-${{ matrix.component }}:scan"
           format: "table"
@@ -109,26 +102,39 @@ jobs:
           severity: "CRITICAL,HIGH"
 
   iac-scan:
-    name: "🏗️ IaC Security Scan"
+    name: "🏗️ IaC Scan"
     runs-on: ubuntu-latest
     needs: lint
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-      - uses: bridgecrewio/checkov-action@01625470d068564177d40f2f35d2524316a3a412 # v12.2854.0
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: bridgecrewio/checkov-action@01625470d068564177d40f2f35d2524316a3a412
         with:
           directory: k8s/
           framework: kubernetes
           soft_fail: true
 
-  update-manifest:
-    name: "🚀 Update K8s Manifest"
+  dockerfile-lint:
+    name: "📋 Dockerfile Lint"
     runs-on: ubuntu-latest
-    needs: [build, image-scan, iac-scan]
+    strategy:
+      matrix:
+        component: [backend, frontend]
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: hadolint/hadolint-action@c8551c319e099e69e06180353f40f09a3977227d
+        with:
+          dockerfile: ${{ matrix.component }}/Dockerfile
+          failure-threshold: warning
+
+  update-manifest:
+    name: "🚀 Update K8s"
+    runs-on: ubuntu-latest
+    needs: [build, image-scan, iac-scan, dockerfile-lint]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     permissions:
-      contents: read
+      contents: write
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
       - id: sha
