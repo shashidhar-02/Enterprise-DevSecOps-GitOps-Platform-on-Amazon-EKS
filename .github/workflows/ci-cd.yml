@@ -72,8 +72,12 @@ jobs:
           cache: 'npm'
           cache-dependency-path: "${{ matrix.component }}/package-lock.json"
 
-      - name: Install dependencies
-        working-directory: ${{ matrix.component }}
+      - name: Install Frontend Dependencies
+        working-directory: frontend  # <--- MUST MATCH FOLDER NAME
+        run: npm ci
+
+      - name: Install Backend Dependencies
+        working-directory: backend   # <--- MUST MATCH FOLDER NAME
         run: npm ci
 
       # npm audit for known vulnerabilities (fail on high/critical)
