@@ -20,6 +20,7 @@ ENV NODE_ENV production
 
 # Copy Next.js standalone build output
 COPY --from=build --chown=appuser:appgroup /app/.next/standalone ./
+COPY --from=build --chown=appuser:appgroup /app/public ./public
 COPY --from=build --chown=appuser:appgroup /app/.next/static ./.next/static
 
 # Security: own files by non-root user
