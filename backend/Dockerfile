@@ -7,7 +7,7 @@ FROM node:20-alpine AS build
 WORKDIR /app
 
 # Copy dependency files
-COPY package.json package-lock.json* ./
+COPY package.json package-lock.json ./
 
 # Install only production dependencies
 RUN npm ci --only=production && npm cache clean --force
