@@ -1,7 +1,7 @@
 # .github/workflows/sim-security-scan.yml
 # Place this file in your repo at: .github/workflows/sim-security-scan.yml
 
-name: AI Security Scanner
+name: CraveDrop AI Security Scanner
 
 on:
   pull_request:
@@ -39,4 +39,4 @@ jobs:
               },
               "sender": { "login": "${{ github.actor }}" }
             }'
-          echo "Security scan triggered successfully"
+          echo "✅ Security scan triggered successfully for CraveDrop"
