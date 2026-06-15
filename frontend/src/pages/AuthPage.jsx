@@ -2,9 +2,19 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api';
 
+const DEMO_CREDENTIALS = {
+  email: 'test@gmail.com',
+  password: 'pass@123',
+};
+
 export default function AuthPage({ onAuth }) {
   const [mode, setMode] = useState('login');
-  const [form, setForm] = useState({ name: '', email: '', password: '', address: '' });
+  const [form, setForm] = useState({
+    name: '',
+    email: DEMO_CREDENTIALS.email,
+    password: DEMO_CREDENTIALS.password,
+    address: '',
+  });
   const [message, setMessage] = useState('');
   const navigate = useNavigate();
 
@@ -16,6 +26,21 @@ export default function AuthPage({ onAuth }) {
       })
       .catch(() => {});
   }, [navigate, onAuth]);
+
+  useEffect(() => {
+    if (mode === 'login') {
+      setForm((prev) => ({
+        ...prev,
+        name: '',
+        email: DEMO_CREDENTIALS.email,
+        password: DEMO_CREDENTIALS.password,
+        address: '',
+      }));
+      return;
+    }
+
+    setForm({ name: '', email: '', password: '', address: '' });
+  }, [mode]);
 
   const submit = async (e) => {
     e.preventDefault();
@@ -47,6 +72,11 @@ export default function AuthPage({ onAuth }) {
           {mode === 'signup' && <input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} placeholder="Delivery address" />}
           <button type="submit" className="primary-btn">{mode === 'login' ? 'Sign in' : 'Create account'}</button>
         </form>
+        {mode === 'login' && (
+          <p className="auth-note">
+            Demo sign-in: <strong>test@gmail.com</strong> / <strong>pass@123</strong>
+          </p>
+        )}
         <button className="ghost-btn" onClick={() => setMode(mode === 'login' ? 'signup' : 'login')}>{mode === 'login' ? 'Need an account? Sign up' : 'Already have an account? Sign in'}</button>
         {message && <p className="status-pill">{message}</p>}
       </article>
