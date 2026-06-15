@@ -18,7 +18,8 @@
 <br />
 
 <!-- 📸 Replace the link below with a screenshot of your actual app! -->
-<img src="https://via.placeholder.com/800x400/1a1a1a/ffffff?text=📸+Drop+Your+App+Screenshot+Here" alt="CraveDrop UI Screenshot" style="border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.2);">
+<img src="https://drive.google.com/uc?export=view&id=1RTznP4b9VHiPdWqDDd-gNgXVOHiYIP4Z" alt="CraveDrop UI Screenshot">
+
 
 </div>
 
