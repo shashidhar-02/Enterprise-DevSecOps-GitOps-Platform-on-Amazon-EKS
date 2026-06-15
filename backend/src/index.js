@@ -1,9 +1,9 @@
-
 require('dotenv').config();
 
 const express = require('express');
 const cors = require('cors');
 const cookieParser = require('cookie-parser');
+const http = require('http');
 
 // Import CraveDrop Routes
 const restaurantRoutes = require('./routes/restaurants');
@@ -12,8 +12,10 @@ const reviewRoutes = require('./routes/reviews');
 const authRoutes = require('./routes/auth');
 
 const db = require('./db');
+const socketModule = require('./socket');
 
 const app = express();
+const server = http.createServer(app);
 const PORT = process.env.PORT || 5000;
 
 // Security: Hide Express fingerprint
@@ -28,11 +30,9 @@ const allowedOrigins = (
 app.use(
   cors({
     origin: (origin, callback) => {
-      // Allow server-to-server requests and approved origins
       if (!origin || allowedOrigins.includes(origin)) {
         return callback(null, true);
       }
-
       return callback(new Error('Not allowed by CORS'));
     },
     credentials: true,
@@ -44,7 +44,7 @@ app.use(
 app.use(cookieParser());
 app.use(express.json({ limit: '1mb' }));
 
-// Health check endpoint (Used by CI/CD and deployment checks)
+// Health check endpoint
 app.get('/api/health', (req, res) => {
   res.status(200).json({
     status: 'ok',
@@ -61,19 +61,19 @@ app.use('/api/reviews', reviewRoutes);
 // Global error handler
 app.use((err, req, res, next) => {
   console.error(err.message);
-
   res.status(500).json({
     error: 'Internal Server Error'
   });
 });
 
-// Initialize database and start server
+// Initialize database, sockets, and start server
 async function start() {
   try {
     await db.initDB();
+    socketModule.init(server);
 
-    app.listen(PORT, '0.0.0.0', () => {
-      console.log(`CraveDrop backend running on port ${PORT}`);
+    server.listen(PORT, '0.0.0.0', () => {
+      console.log(`CraveDrop Enterprise backend running on port ${PORT}`);
     });
   } catch (err) {
     console.error('Failed to start server:', err);

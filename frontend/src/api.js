@@ -19,7 +19,11 @@ api.interceptors.response.use(
   (error) => {
     if (error.response?.status === 401) {
       localStorage.removeItem('cravedrop_token');
-      window.location.href = '/login';
+      const isAuthMe = error.config?.url?.includes('/auth/me');
+      const isAuthPage = window.location.pathname === '/auth' || window.location.pathname === '/';
+      if (!isAuthMe && !isAuthPage) {
+        window.location.href = '/auth';
+      }
     }
     return Promise.reject(error);
   }

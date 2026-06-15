@@ -2,15 +2,28 @@ const express = require('express');
 const router = express.Router();
 const { pool } = require('../db');
 
-// GET all restaurants (newest first, with review count)
+// GET all restaurants (with optional search)
 router.get('/', async (req, res) => {
+  const search = req.query.search;
   try {
-    const result = await pool.query(
-      `SELECT r.*, 
-        (SELECT COUNT(*) FROM reviews rev WHERE rev.restaurant_id = r.id) as review_count
-       FROM restaurants r 
-       ORDER BY r.created_at DESC`
-    );
+    let result;
+    if (search) {
+      result = await pool.query(
+        `SELECT r.*, 
+          (SELECT COUNT(*) FROM reviews rev WHERE rev.restaurant_id = r.id) as review_count
+         FROM restaurants r 
+         WHERE r.name ILIKE $1 OR r.category ILIKE $1 OR r.cuisine_type ILIKE $1
+         ORDER BY r.created_at DESC`,
+        [`%${search}%`]
+      );
+    } else {
+      result = await pool.query(
+        `SELECT r.*, 
+          (SELECT COUNT(*) FROM reviews rev WHERE rev.restaurant_id = r.id) as review_count
+         FROM restaurants r 
+         ORDER BY r.created_at DESC`
+      );
+    }
     res.json(result.rows);
   } catch (err) {
     console.error(err);
@@ -41,9 +54,20 @@ router.get('/:id', async (req, res) => {
   }
 });
 
+// GET dishes for a restaurant
+router.get('/:id/dishes', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT * FROM dishes WHERE restaurant_id = $1', [req.params.id]);
+    res.json(result.rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to fetch dishes' });
+  }
+});
+
 // CREATE restaurant
 router.post('/', async (req, res) => {
-  const { name, description, category, emoji } = req.body;
+  const { name, description, category, emoji, image_url, rating, delivery_time, cuisine_type } = req.body;
 
   if (!name || !category) {
     return res.status(400).json({ error: 'Restaurant name and category are required' });
@@ -51,10 +75,10 @@ router.post('/', async (req, res) => {
 
   try {
     const result = await pool.query(
-      `INSERT INTO restaurants (name, description, category, emoji) 
-       VALUES ($1, $2, $3, $4) 
+      `INSERT INTO restaurants (name, description, category, emoji, image_url, rating, delivery_time, cuisine_type) 
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8) 
        RETURNING *`,
-      [name, description || 'A delicious new spot', category, emoji || '🍔']
+      [name, description || 'A delicious new spot', category, emoji || '🍔', image_url, rating, delivery_time, cuisine_type]
     );
     res.status(201).json(result.rows[0]);
   } catch (err) {
@@ -65,7 +89,7 @@ router.post('/', async (req, res) => {
 
 // UPDATE restaurant
 router.put('/:id', async (req, res) => {
-  const { name, description, category, emoji } = req.body;
+  const { name, description, category, emoji, image_url, rating, delivery_time, cuisine_type } = req.body;
 
   if (!name || !category) {
     return res.status(400).json({ error: 'Restaurant name and category are required' });
@@ -74,10 +98,10 @@ router.put('/:id', async (req, res) => {
   try {
     const result = await pool.query(
       `UPDATE restaurants 
-       SET name = $1, description = $2, category = $3, emoji = $4, updated_at = NOW() 
-       WHERE id = $5 
+       SET name = $1, description = $2, category = $3, emoji = $4, image_url = $5, rating = $6, delivery_time = $7, cuisine_type = $8, updated_at = NOW() 
+       WHERE id = $9 
        RETURNING *`,
-      [name, description || 'A delicious new spot', category, emoji || '🍔', req.params.id]
+      [name, description, category, emoji, image_url, rating, delivery_time, cuisine_type, req.params.id]
     );
 
     if (result.rows.length === 0) {
