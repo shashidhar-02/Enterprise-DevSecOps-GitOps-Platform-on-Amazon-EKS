@@ -101,7 +101,7 @@ const OrderTracking = () => {
 
       <div style={{ marginTop: '3rem', background: 'var(--soft-bg)', padding: '1.5rem', borderRadius: '12px' }}>
         <h4 style={{ margin: '0 0 1rem 0' }}>Order Details</h4>
-        {order.items && JSON.parse(order.items).map((item, idx) => (
+        {((typeof order.items === 'string' ? JSON.parse(order.items) : order.items) || []).map((item, idx) => (
           <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
             <span>{item.quantity}x {item.name}</span>
             <span>₹{item.price * item.quantity}</span>

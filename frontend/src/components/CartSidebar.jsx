@@ -4,7 +4,7 @@ import useCartStore from '../store/cartStore';
 import api from '../api';
 
 const CartSidebar = ({ isOpen, onClose, user }) => {
-  const { items, clearCart, getTotalPrice } = useCartStore();
+  const { cart: items, clearCart, getTotalPrice } = useCartStore();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
 
