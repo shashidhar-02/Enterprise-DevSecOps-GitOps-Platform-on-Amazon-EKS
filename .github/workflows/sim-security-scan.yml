@@ -1,102 +1,42 @@
+# .github/workflows/sim-security-scan.yml
+# Place this file in your repo at: .github/workflows/sim-security-scan.yml
 
-name: CraveDrop AI Security Scanner
+name: AI Security Scanner
 
 on:
   pull_request:
-    types:
-      - opened
-      - synchronize
-      - reopened
+    types: [opened, synchronize, reopened]
 
 jobs:
   security-scan:
     runs-on: ubuntu-latest
-
     steps:
       - name: Trigger Sim.ai Security Scan
-        env:
-          SIM_API_KEY: ${{ secrets.SIM_API_KEY }}
-
-          PR_ACTION: ${{ github.event.action }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
-          PR_TITLE: ${{ github.event.pull_request.title }}
-          PR_BODY: ${{ github.event.pull_request.body }}
-          PR_USER: ${{ github.event.pull_request.user.login }}
-          PR_SHA: ${{ github.event.pull_request.head.sha }}
-          PR_URL: ${{ github.event.pull_request.html_url }}
-          PR_STATE: ${{ github.event.pull_request.state }}
-          PR_ADDITIONS: ${{ github.event.pull_request.additions }}
-          PR_DELETIONS: ${{ github.event.pull_request.deletions }}
-          PR_CHANGED_FILES: ${{ github.event.pull_request.changed_files }}
-
-          REPO_FULL_NAME: ${{ github.repository }}
-          REPO_NAME: ${{ github.event.repository.name }}
-          REPO_OWNER: ${{ github.repository_owner }}
-          REPO_PRIVATE: ${{ github.event.repository.private }}
-
-          ACTOR: ${{ github.actor }}
-
         run: |
-          set -euo pipefail
-
-          jq -n \
-            --arg action "$PR_ACTION" \
-            --arg title "$PR_TITLE" \
-            --arg body "$PR_BODY" \
-            --arg user "$PR_USER" \
-            --arg sha "$PR_SHA" \
-            --arg url "$PR_URL" \
-            --arg state "$PR_STATE" \
-            --arg repo_full_name "$REPO_FULL_NAME" \
-            --arg repo_name "$REPO_NAME" \
-            --arg repo_owner "$REPO_OWNER" \
-            --arg actor "$ACTOR" \
-            --argjson number "$PR_NUMBER" \
-            --argjson additions "$PR_ADDITIONS" \
-            --argjson deletions "$PR_DELETIONS" \
-            --argjson changed_files "$PR_CHANGED_FILES" \
-            --argjson private "$REPO_PRIVATE" \
-            '{
-              action: $action,
-              number: $number,
-              pull_request: {
-                title: $title,
-                body: $body,
-                user: {
-                  login: $user
-                },
-                head: {
-                  sha: $sha
-                },
-                html_url: $url,
-                state: $state,
-                additions: $additions,
-                deletions: $deletions,
-                changed_files: $changed_files
-              },
-              repository: {
-                full_name: $repo_full_name,
-                name: $repo_name,
-                owner: {
-                  login: $repo_owner
-                },
-                private: $private
-              },
-              sender: {
-                login: $actor
-              }
-            }' > payload.json
-
-          curl \
-            --fail \
-            --silent \
-            --show-error \
-            --connect-timeout 10 \
-            --max-time 60 \
-            -X POST \
+          curl -s -X POST \
             "https://sim.ai/api/workflows/45d62250-3c46-430d-8cf8-ba658804b20f/execute" \
             -H "Content-Type: application/json" \
-            -H "x-api-key: ${SIM_API_KEY}" \
-            --data @payload.json
-
-          echo "✅ Security scan triggered successfully for CraveDrop"
+            -H "x-api-key: ${{ secrets.SIM_API_KEY }}" \
+            -d '{
+              "action": "${{ github.event.action }}",
+              "number": ${{ github.event.pull_request.number }},
+              "pull_request": {
+                "title": ${{ toJSON(github.event.pull_request.title) }},
+                "body": ${{ toJSON(github.event.pull_request.body) }},
+                "user": { "login": "${{ github.event.pull_request.user.login }}" },
+                "head": { "sha": "${{ github.event.pull_request.head.sha }}" },
+                "html_url": "${{ github.event.pull_request.html_url }}",
+                "state": "${{ github.event.pull_request.state }}",
+                "additions": ${{ github.event.pull_request.additions }},
+                "deletions": ${{ github.event.pull_request.deletions }},
+                "changed_files": ${{ github.event.pull_request.changed_files }}
+              },
+              "repository": {
+                "full_name": "${{ github.repository }}",
+                "name": "${{ github.event.repository.name }}",
+                "owner": { "login": "${{ github.repository_owner }}" },
+                "private": ${{ github.event.repository.private }}
+              },
+              "sender": { "login": "${{ github.actor }}" }
+            }'
+          echo "Security scan triggered successfully"
