@@ -107,19 +107,46 @@ async function initDB() {
       );
     `);
 
-    // Seed Demo User if not exists
-    const demoUserCheck = await client.query('SELECT * FROM users WHERE email = $1', ['demo@cravedrop.com']);
-    if (demoUserCheck.rows.length === 0) {
-      const demoUserInsert = await client.query(
-        "INSERT INTO users (name, email, password) VALUES ('Demo User', 'demo@cravedrop.com', 'demo1234') RETURNING id"
-      );
-      const demoUserId = demoUserInsert.rows[0].id;
+    // Seed assignment demo credentials deterministically
+    const assignmentUserCheck = await client.query('SELECT * FROM users WHERE email = $1', ['test@gmail.com']);
+
+    if (assignmentUserCheck.rows.length === 0) {
+      const legacyDemoUser = await client.query('SELECT * FROM users WHERE email = $1', ['demo@cravedrop.com']);
+
+      if (legacyDemoUser.rows.length > 0) {
+        await client.query(
+          "UPDATE users SET name = $1, email = $2, password = $3 WHERE id = $4",
+          ['Demo User', 'test@gmail.com', 'pass@123', legacyDemoUser.rows[0].id]
+        );
+      } else {
+        const assignmentUserInsert = await client.query(
+          "INSERT INTO users (name, email, password) VALUES ('Demo User', 'test@gmail.com', 'pass@123') RETURNING id"
+        );
+        await client.query(
+          "INSERT INTO addresses (user_id, street, city, type) VALUES ($1, 'Indiranagar, Bangalore', 'Bangalore', 'Home')",
+          [assignmentUserInsert.rows[0].id]
+        );
+      }
+    } else {
       await client.query(
-        "INSERT INTO addresses (user_id, street, city, type) VALUES ($1, 'Indiranagar, Bangalore', 'Bangalore', 'Home')",
-        [demoUserId]
+        "UPDATE users SET name = $1, password = $2 WHERE email = $3",
+        ['Demo User', 'pass@123', 'test@gmail.com']
       );
-      console.log('✅ Demo user and address seeded into PostgreSQL database.');
     }
+
+    const finalUser = await client.query('SELECT id FROM users WHERE email = $1', ['test@gmail.com']);
+    if (finalUser.rows.length > 0) {
+      const userId = finalUser.rows[0].id;
+      const addressCheck = await client.query('SELECT * FROM addresses WHERE user_id = $1 LIMIT 1', [userId]);
+      if (addressCheck.rows.length === 0) {
+        await client.query(
+          "INSERT INTO addresses (user_id, street, city, type) VALUES ($1, 'Indiranagar, Bangalore', 'Bangalore', 'Home')",
+          [userId]
+        );
+      }
+    }
+
+    console.log('✅ Assignment demo credentials are ready.');
 
     console.log('✅ CraveDrop Phase 2 Enterprise Database tables initialized');
   } catch (err) {
