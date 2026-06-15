@@ -3,11 +3,13 @@ require('dotenv').config();
 
 const express = require('express');
 const cors = require('cors');
+const cookieParser = require('cookie-parser');
 
 // Import CraveDrop Routes
 const restaurantRoutes = require('./routes/restaurants');
 const orderRoutes = require('./routes/orders');
 const reviewRoutes = require('./routes/reviews');
+const authRoutes = require('./routes/auth');
 
 const db = require('./db');
 
@@ -39,6 +41,7 @@ app.use(
   })
 );
 
+app.use(cookieParser());
 app.use(express.json({ limit: '1mb' }));
 
 // Health check endpoint (Used by CI/CD and deployment checks)
@@ -50,6 +53,7 @@ app.get('/api/health', (req, res) => {
 });
 
 // Mount Routes
+app.use('/api/auth', authRoutes);
 app.use('/api/restaurants', restaurantRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/reviews', reviewRoutes);

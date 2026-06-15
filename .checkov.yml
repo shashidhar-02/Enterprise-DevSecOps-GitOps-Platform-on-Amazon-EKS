@@ -1,0 +1,18 @@
+# Output only failed checks to keep CI/CD logs clean
+compact: true
+
+# Halt the pipeline if any high-severity violations are found
+soft-fail: false
+
+# Specify the IaC framework
+framework:
+  - terraform
+
+# Target directory 
+directory:
+  - .
+
+# Explicitly skip checks that conflict with our intentional dev setup
+skip-check:
+  - CKV_AWS_39   # EKS cluster public endpoint should not be accessible (Needed for local kubectl access)
+  - CKV_AWS_58   # Ensure EKS cluster has secrets encryption enabled (Skipped for dev)
