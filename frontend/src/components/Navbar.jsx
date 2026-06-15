@@ -3,30 +3,53 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import useCartStore from '../store/cartStore';
 import api from '../api';
 
-const Navbar = ({ user, onLogout }) => {
+const Navbar = ({ user, onLogout, toggleCart }) => {
   const totalItems = useCartStore((state) => state.getTotalItems());
   const navigate = useNavigate();
 
   const handleLogout = async () => {
-    await api.post('/auth/logout');
-    onLogout();
-    navigate('/auth');
+    try {
+      await api.post('/auth/logout');
+      onLogout();
+      navigate('/auth');
+    } catch (err) {
+      console.error('Logout failed', err);
+    }
   };
 
   return (
     <nav className="navbar-container">
-      <div>
-        <div className="logo">CraveDrop 🍔</div>
-        <p className="mini-copy">Fresh food, fast delivery, premium feel</p>
+      <div className="logo-section">
+        <NavLink to="/" className="logo">
+          🍔 CraveDrop
+        </NavLink>
+        <div className="location-picker">
+          <strong>Home</strong>
+          <span>Indiranagar, Bangalore</span>
+          <span>▼</span>
+        </div>
       </div>
-      <div className="nav-links">
-        <NavLink to="/" className={({ isActive }) => (isActive ? 'active' : '')}>Home</NavLink>
-        <NavLink to="/add" className={({ isActive }) => (isActive ? 'active' : '')}>Add Dish</NavLink>
-      </div>
+      
       <div className="nav-actions">
-        <div className="profile-pill">Hi, {user?.name || 'Foodie'}</div>
-        <button className="cart-btn">🛒 <span className="badge">{totalItems}</span></button>
-        <button className="ghost-btn small" onClick={handleLogout}>Logout</button>
+        <NavLink to="/" className="nav-link">
+          <span>🔍</span> Search
+        </NavLink>
+        <NavLink to="/add" className="nav-link">
+          <span>➕</span> Add Dish
+        </NavLink>
+        <div className="nav-link" style={{ cursor: 'pointer' }}>
+          <span>👤</span> {user?.name || 'Profile'}
+        </div>
+        <div className="nav-link" onClick={toggleCart} style={{ cursor: 'pointer' }}>
+          <span>🛒</span> Cart 
+          {totalItems > 0 && <span className="badge">{totalItems}</span>}
+        </div>
+        <button onClick={handleLogout} style={{
+          background: 'transparent', border: 'none', color: 'var(--text-main)',
+          fontWeight: 600, fontSize: '1rem', cursor: 'pointer'
+        }}>
+          Logout
+        </button>
       </div>
     </nav>
   );
