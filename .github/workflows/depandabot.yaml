@@ -1,4 +1,4 @@
-```yaml id="m9t2qf"
+
 version: 2
 
 updates:
@@ -67,4 +67,4 @@ updates:
     labels:
       - "kubernetes"
       - "docker"
-```
+
