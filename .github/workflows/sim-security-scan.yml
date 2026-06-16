@@ -7,6 +7,8 @@ on:
   pull_request:
     types: [opened, synchronize, reopened]
 
+permissions: {}
+
 jobs:
   security-scan:
     runs-on: ubuntu-latest
