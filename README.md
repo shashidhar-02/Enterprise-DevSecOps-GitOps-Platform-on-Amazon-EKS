@@ -15,7 +15,7 @@
 ![Nginx](https://img.shields.io/badge/Nginx-009639?style=for-the-badge&logo=nginx&logoColor=white)
 ![AWS EC2](https://img.shields.io/badge/AWS_EC2-FF9900?style=for-the-badge&logo=amazonaws&logoColor=white)
 
-<br />
+<br/>
 
 <!-- 📸 Replace the link below with a screenshot of your actual app! -->
 <img src="https://drive.google.com/uc?export=view&id=1RTznP4b9VHiPdWqDDd-gNgXVOHiYIP4Z" alt="CraveDrop UI Screenshot">
