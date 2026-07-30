@@ -45,8 +45,29 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "24"
-          cache: "${{ matrix.cache }}"
-          cache-dependency-path: "${{ matrix.cache-dependency-path }}"
+
+      - name: Find lockfile
+        id: lockfile
+        run: |
+          if [ -f "${{ matrix.component }}/yarn.lock" ]; then
+            echo "file=yarn.lock" >> $GITHUB_OUTPUT
+          elif [ -f "${{ matrix.component }}/package-lock.json" ]; then
+            echo "file=package-lock.json" >> $GITHUB_OUTPUT
+          else
+            echo "file=" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Cache dependencies
+        if: steps.lockfile.outputs.file != ''
+        uses: actions/cache@v4
+        with:
+          path: |
+            ${{ matrix.component }}/node_modules
+            ~/.npm
+            ~/.cache/yarn
+          key: ${{ runner.os }}-deps-${{ matrix.component }}-${{ hashFiles(format('{0}/{1}', matrix.component, steps.lockfile.outputs.file)) }}
+          restore-keys: |
+            ${{ runner.os }}-deps-${{ matrix.component }}-
 
       - name: Install dependencies
         working-directory: ${{ matrix.component }}
@@ -90,8 +111,29 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "24"
-          cache: "${{ matrix.cache }}"
-          cache-dependency-path: "${{ matrix.cache-dependency-path }}"
+
+      - name: Find lockfile
+        id: lockfile
+        run: |
+          if [ -f "${{ matrix.component }}/yarn.lock" ]; then
+            echo "file=yarn.lock" >> $GITHUB_OUTPUT
+          elif [ -f "${{ matrix.component }}/package-lock.json" ]; then
+            echo "file=package-lock.json" >> $GITHUB_OUTPUT
+          else
+            echo "file=" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Cache dependencies
+        if: steps.lockfile.outputs.file != ''
+        uses: actions/cache@v4
+        with:
+          path: |
+            ${{ matrix.component }}/node_modules
+            ~/.npm
+            ~/.cache/yarn
+          key: ${{ runner.os }}-deps-${{ matrix.component }}-${{ hashFiles(format('{0}/{1}', matrix.component, steps.lockfile.outputs.file)) }}
+          restore-keys: |
+            ${{ runner.os }}-deps-${{ matrix.component }}-
 
       - name: Install dependencies
         working-directory: ${{ matrix.component }}
