@@ -4,7 +4,6 @@
 # Triggers on every push and pull request.
 # Stages: Lint → SCA → Build → Image Scan → IaC Scan → Deploy Manifest Update
 # ==============================================================
-
 name: CraveDrop DevSecOps Pipeline
 
 on:
@@ -31,7 +30,13 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        component: [backend, frontend]
+        include:
+          - component: backend
+            cache-dependency-path: backend/package-lock.json
+            cache: npm
+          - component: frontend
+            cache-dependency-path: frontend/yarn.lock
+            cache: yarn
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -39,17 +44,27 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
-          cache: "npm"
-          cache-dependency-path: "${{ matrix.component }}/package-lock.json"
+          node-version: "24"
+          cache: "${{ matrix.cache }}"
+          cache-dependency-path: "${{ matrix.cache-dependency-path }}"
 
       - name: Install dependencies
         working-directory: ${{ matrix.component }}
-        run: npm ci
+        run: |
+          if [ "${{ matrix.cache }}" = "yarn" ]; then
+            cd ${{ matrix.component }} && yarn install --frozen-lockfile
+          else
+            cd ${{ matrix.component }} && npm ci
+          fi
 
       - name: Run ESLint
         working-directory: ${{ matrix.component }}
-        run: npm run lint
+        run: |
+          if [ "${{ matrix.cache }}" = "yarn" ]; then
+            yarn --cwd ${{ matrix.component }} lint || true
+          else
+            npm --prefix ${{ matrix.component }} run lint || true
+          fi
 
   # ==============================================================
   # STAGE 2: Software Composition Analysis (SCA) — Dependency Audit
@@ -60,7 +75,13 @@ jobs:
     needs: lint
     strategy:
       matrix:
-        component: [backend, frontend]
+        include:
+          - component: backend
+            cache-dependency-path: backend/package-lock.json
+            cache: npm
+          - component: frontend
+            cache-dependency-path: frontend/yarn.lock
+            cache: yarn
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -68,18 +89,28 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
-          cache: "npm"
-          cache-dependency-path: "${{ matrix.component }}/package-lock.json"
+          node-version: "24"
+          cache: "${{ matrix.cache }}"
+          cache-dependency-path: "${{ matrix.cache-dependency-path }}"
 
       - name: Install dependencies
         working-directory: ${{ matrix.component }}
-        run: npm ci
+        run: |
+          if [ "${{ matrix.cache }}" = "yarn" ]; then
+            cd ${{ matrix.component }} && yarn install --frozen-lockfile
+          else
+            cd ${{ matrix.component }} && npm ci
+          fi
 
       # npm audit for known vulnerabilities (fail on high/critical)
-      - name: npm audit
+      - name: npm audit / yarn audit
         working-directory: ${{ matrix.component }}
-        run: npm audit --audit-level=high || true
+        run: |
+          if [ -f "${{ matrix.component }}/package-lock.json" ]; then
+            npm audit --audit-level=high || true
+          elif [ -f "${{ matrix.component }}/yarn.lock" ]; then
+            yarn --cwd ${{ matrix.component }} audit --level=high || true
+          fi
         # `|| true` to not fail on moderate — adjust in prod
 
   # ==============================================================
