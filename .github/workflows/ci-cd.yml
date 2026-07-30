@@ -32,14 +32,34 @@ jobs:
       matrix:
         include:
           - component: backend
+            path: backend
             cache-dependency-path: backend/package-lock.json
             cache: npm
           - component: frontend
+            path: frontend
             cache-dependency-path: frontend/yarn.lock
             cache: yarn
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: List repository root (diagnostic)
+        run: |
+          echo "PWD: $(pwd)"
+          ls -la
+
+      - name: Create expected component symlinks (fallback)
+        run: |
+          if [ ! -d backend ] && [ -d services/backend ]; then
+            ln -s services/backend backend
+            echo "Created symlink backend -> services/backend"
+          fi
+          if [ ! -d frontend ] && [ -d web/frontend ]; then
+            ln -s web/frontend frontend
+            echo "Created symlink frontend -> web/frontend"
+          fi
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -49,9 +69,9 @@ jobs:
       - name: Find lockfile
         id: lockfile
         run: |
-          if [ -f "${{ matrix.component }}/yarn.lock" ]; then
+          if [ -f "${{ matrix.path }}/yarn.lock" ]; then
             echo "file=yarn.lock" >> $GITHUB_OUTPUT
-          elif [ -f "${{ matrix.component }}/package-lock.json" ]; then
+          elif [ -f "${{ matrix.path }}/package-lock.json" ]; then
             echo "file=package-lock.json" >> $GITHUB_OUTPUT
           else
             echo "file=" >> $GITHUB_OUTPUT
@@ -62,29 +82,29 @@ jobs:
         uses: actions/cache@v4
         with:
           path: |
-            ${{ matrix.component }}/node_modules
+            ${{ matrix.path }}/node_modules
             ~/.npm
             ~/.cache/yarn
-          key: ${{ runner.os }}-deps-${{ matrix.component }}-${{ hashFiles(format('{0}/{1}', matrix.component, steps.lockfile.outputs.file)) }}
+          key: ${{ runner.os }}-deps-${{ matrix.component }}-${{ hashFiles(format('{0}/{1}', matrix.path, steps.lockfile.outputs.file)) }}
           restore-keys: |
             ${{ runner.os }}-deps-${{ matrix.component }}-
 
       - name: Install dependencies
-        working-directory: ${{ matrix.component }}
+        working-directory: ${{ matrix.path }}
         run: |
           if [ "${{ matrix.cache }}" = "yarn" ]; then
-            cd ${{ matrix.component }} && yarn install --frozen-lockfile
+            yarn install --frozen-lockfile
           else
-            cd ${{ matrix.component }} && npm ci
+            npm ci
           fi
 
       - name: Run ESLint
-        working-directory: ${{ matrix.component }}
+        working-directory: ${{ matrix.path }}
         run: |
           if [ "${{ matrix.cache }}" = "yarn" ]; then
-            yarn --cwd ${{ matrix.component }} lint || true
+            yarn lint || true
           else
-            npm --prefix ${{ matrix.component }} run lint || true
+            npm run lint || true
           fi
 
   # ==============================================================
@@ -98,14 +118,34 @@ jobs:
       matrix:
         include:
           - component: backend
+            path: backend
             cache-dependency-path: backend/package-lock.json
             cache: npm
           - component: frontend
+            path: frontend
             cache-dependency-path: frontend/yarn.lock
             cache: yarn
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: List repository root (diagnostic)
+        run: |
+          echo "PWD: $(pwd)"
+          ls -la
+
+      - name: Create expected component symlinks (fallback)
+        run: |
+          if [ ! -d backend ] && [ -d services/backend ]; then
+            ln -s services/backend backend
+            echo "Created symlink backend -> services/backend"
+          fi
+          if [ ! -d frontend ] && [ -d web/frontend ]; then
+            ln -s web/frontend frontend
+            echo "Created symlink frontend -> web/frontend"
+          fi
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -115,9 +155,9 @@ jobs:
       - name: Find lockfile
         id: lockfile
         run: |
-          if [ -f "${{ matrix.component }}/yarn.lock" ]; then
+          if [ -f "${{ matrix.path }}/yarn.lock" ]; then
             echo "file=yarn.lock" >> $GITHUB_OUTPUT
-          elif [ -f "${{ matrix.component }}/package-lock.json" ]; then
+          elif [ -f "${{ matrix.path }}/package-lock.json" ]; then
             echo "file=package-lock.json" >> $GITHUB_OUTPUT
           else
             echo "file=" >> $GITHUB_OUTPUT
@@ -128,30 +168,30 @@ jobs:
         uses: actions/cache@v4
         with:
           path: |
-            ${{ matrix.component }}/node_modules
+            ${{ matrix.path }}/node_modules
             ~/.npm
             ~/.cache/yarn
-          key: ${{ runner.os }}-deps-${{ matrix.component }}-${{ hashFiles(format('{0}/{1}', matrix.component, steps.lockfile.outputs.file)) }}
+          key: ${{ runner.os }}-deps-${{ matrix.component }}-${{ hashFiles(format('{0}/{1}', matrix.path, steps.lockfile.outputs.file)) }}
           restore-keys: |
             ${{ runner.os }}-deps-${{ matrix.component }}-
 
       - name: Install dependencies
-        working-directory: ${{ matrix.component }}
+        working-directory: ${{ matrix.path }}
         run: |
           if [ "${{ matrix.cache }}" = "yarn" ]; then
-            cd ${{ matrix.component }} && yarn install --frozen-lockfile
+            yarn install --frozen-lockfile
           else
-            cd ${{ matrix.component }} && npm ci
+            npm ci
           fi
 
       # npm audit for known vulnerabilities (fail on high/critical)
       - name: npm audit / yarn audit
-        working-directory: ${{ matrix.component }}
+        working-directory: ${{ matrix.path }}
         run: |
-          if [ -f "${{ matrix.component }}/package-lock.json" ]; then
+          if [ -f "${{ matrix.path }}/package-lock.json" ]; then
             npm audit --audit-level=high || true
-          elif [ -f "${{ matrix.component }}/yarn.lock" ]; then
-            yarn --cwd ${{ matrix.component }} audit --level=high || true
+          elif [ -f "${{ matrix.path }}/yarn.lock" ]; then
+            yarn audit --level=high || true
           fi
         # `|| true` to not fail on moderate — adjust in prod
 
@@ -167,12 +207,34 @@ jobs:
       packages: write # Needed to push to GHCR
     strategy:
       matrix:
-        component: [backend, frontend]
+        include:
+          - component: backend
+            path: backend
+          - component: frontend
+            path: frontend
     outputs:
       image_tag: ${{ steps.meta.outputs.version }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: List repository root (diagnostic)
+        run: |
+          echo "PWD: $(pwd)"
+          ls -la
+
+      - name: Create expected component symlinks (fallback)
+        run: |
+          if [ ! -d backend ] && [ -d services/backend ]; then
+            ln -s services/backend backend
+            echo "Created symlink backend -> services/backend"
+          fi
+          if [ ! -d frontend ] && [ -d web/frontend ]; then
+            ln -s web/frontend frontend
+            echo "Created symlink frontend -> web/frontend"
+          fi
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -197,14 +259,13 @@ jobs:
       - name: Build and push image
         uses: docker/build-push-action@v6
         with:
-          context: ./${{ matrix.component }}
-          file: ./${{ matrix.component }}/Dockerfile
+          context: ./${{ matrix.path }}
+          file: ./${{ matrix.path }}/Dockerfile
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-          # Security: provenance and SBOM
           provenance: true
           sbom: true
 
@@ -217,14 +278,36 @@ jobs:
     needs: build
     strategy:
       matrix:
-        component: [backend, frontend]
+        include:
+          - component: backend
+            path: backend
+          - component: frontend
+            path: frontend
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: List repository root (diagnostic)
+        run: |
+          echo "PWD: $(pwd)"
+          ls -la
+
+      - name: Create expected component symlinks (fallback)
+        run: |
+          if [ ! -d backend ] && [ -d services/backend ]; then
+            ln -s services/backend backend
+            echo "Created symlink backend -> services/backend"
+          fi
+          if [ ! -d frontend ] && [ -d web/frontend ]; then
+            ln -s web/frontend frontend
+            echo "Created symlink frontend -> web/frontend"
+          fi
 
       - name: Build image for scanning
         run: |
-          docker build -t cravedrop-${{ matrix.component }}:scan ./${{ matrix.component }}
+          docker build -t cravedrop-${{ matrix.component }}:scan ./${{ matrix.path }}
 
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@master
@@ -247,6 +330,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Run Checkov on Terraform
         uses: bridgecrewio/checkov-action@v12
@@ -273,15 +358,37 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        component: [backend, frontend]
+        include:
+          - component: backend
+            path: backend
+          - component: frontend
+            path: frontend
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: List repository root (diagnostic)
+        run: |
+          echo "PWD: $(pwd)"
+          ls -la
+
+      - name: Create expected component symlinks (fallback)
+        run: |
+          if [ ! -d backend ] && [ -d services/backend ]; then
+            ln -s services/backend backend
+            echo "Created symlink backend -> services/backend"
+          fi
+          if [ ! -d frontend ] && [ -d web/frontend ]; then
+            ln -s web/frontend frontend
+            echo "Created symlink frontend -> web/frontend"
+          fi
 
       - name: Run Hadolint
         uses: hadolint/hadolint-action@v3.1.0
         with:
-          dockerfile: ${{ matrix.component }}/Dockerfile
+          dockerfile: ${{ matrix.path }}/Dockerfile
           failure-threshold: warning
 
   # ==============================================================
@@ -300,6 +407,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
 
       - name: Get short SHA
         id: sha
