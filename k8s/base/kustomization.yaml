@@ -1,5 +1,6 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
+namespace: cravedrop
 resources:
   - backend.yaml
   - frontend.yaml
@@ -12,5 +13,6 @@ configMapGenerator:
       - DB_PORT=5432
       - DB_SSL=true
       - DB_CA_FILE=/var/run/db-ca/rds-ca.pem
+      - SECRETS_DIR=/var/run/secrets/cravedrop
       - TRUST_PROXY_HOPS=2
       - ALLOWED_ORIGINS=https://cravedrop.example.com

@@ -1,6 +1,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { Pool } = require('pg');
+require('./config').loadSecretFiles();
 
 const pool = new Pool({
   user: process.env.DB_USER, password: process.env.DB_PASSWORD,

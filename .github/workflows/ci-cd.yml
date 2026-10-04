@@ -167,7 +167,10 @@ jobs:
         run: docker compose down --volumes
   publish:
     name: Publish (${{ matrix.component }})
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: >-
+      (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+      (github.event_name == 'pull_request' && vars.PUBLISH_REVIEW_IMAGES == 'true' &&
+      github.actor == github.repository_owner && github.event.pull_request.head.repo.full_name == github.repository)
     needs: [application, integration, containers, configuration, source-security, browser]
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -199,4 +202,4 @@ jobs:
         env:
           DIGEST: ${{ steps.image.outputs.digest }}
           COMPONENT: ${{ matrix.component }}
-        run: echo "$COMPONENT image digest - $DIGEST" >> "$GITHUB_STEP_SUMMARY"
+        run: echo "$COMPONENT image digest - $DIGEST" | tee -a "$GITHUB_STEP_SUMMARY"

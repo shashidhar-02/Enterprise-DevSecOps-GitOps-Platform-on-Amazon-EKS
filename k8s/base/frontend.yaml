@@ -2,6 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: frontend
+  namespace: cravedrop
 spec:
   replicas: 2
   revisionHistoryLimit: 3
@@ -14,7 +15,7 @@ spec:
       labels: {app: frontend}
     spec:
       automountServiceAccountToken: false
-      securityContext: {runAsNonRoot: true, runAsUser: 101, runAsGroup: 101, seccompProfile: {type: RuntimeDefault}}
+      securityContext: {runAsNonRoot: true, runAsUser: 10001, runAsGroup: 10001, fsGroup: 10001, seccompProfile: {type: RuntimeDefault}}
       containers:
         - name: frontend
           image: ghcr.io/shashidhar-02/enterprise-devsecops-gitops-platform-on-amazon-eks/cravedrop-frontend:bootstrap
@@ -45,6 +46,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: frontend
+  namespace: cravedrop
 spec:
   selector: {app: frontend}
   ports: [{name: http, port: 8080, targetPort: http}]
@@ -53,6 +55,7 @@ apiVersion: policy/v1
 kind: PodDisruptionBudget
 metadata:
   name: frontend
+  namespace: cravedrop
 spec:
   minAvailable: 1
   selector:

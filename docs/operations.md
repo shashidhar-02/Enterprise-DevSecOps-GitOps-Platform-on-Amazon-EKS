@@ -52,7 +52,10 @@ kubectl -n cravedrop-dev create configmap database-ca \
   --from-file=rds-ca.pem=/secure/path/verified-rds-ca-bundle.pem
 ```
 
-Repeat with separate credentials in `cravedrop-prod`. The CA bundle is public
+The Secret is mounted read-only with mode 0440; the backend loads only the five
+listed keys from `SECRETS_DIR`. Runtime secret values are not injected into the
+pod specification's environment variables. Repeat with separate credentials in
+`cravedrop-prod`. The CA bundle is public
 trust material, not a password. Obtain/verify it from the database provider.
 The API verifies database TLS certificates; do not disable certificate checks.
 If GHCR packages are private, configure an image pull secret in each namespace

@@ -2,6 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: backend
+  namespace: cravedrop
 spec:
   replicas: 2
   revisionHistoryLimit: 3
@@ -15,7 +16,7 @@ spec:
     spec:
       automountServiceAccountToken: false
       terminationGracePeriodSeconds: 20
-      securityContext: {runAsNonRoot: true, runAsUser: 1000, runAsGroup: 1000, seccompProfile: {type: RuntimeDefault}}
+      securityContext: {runAsNonRoot: true, runAsUser: 10001, runAsGroup: 10001, fsGroup: 10001, seccompProfile: {type: RuntimeDefault}}
       containers:
         - name: backend
           image: ghcr.io/shashidhar-02/enterprise-devsecops-gitops-platform-on-amazon-eks/cravedrop-backend:bootstrap
@@ -23,7 +24,6 @@ spec:
           ports: [{name: http, containerPort: 5000}]
           envFrom:
             - configMapRef: {name: backend-config}
-            - secretRef: {name: backend-secrets}
           resources:
             requests: {cpu: 100m, memory: 128Mi}
             limits: {cpu: 500m, memory: 256Mi}
@@ -42,11 +42,14 @@ spec:
           volumeMounts:
             - {name: tmp, mountPath: /tmp}
             - {name: database-ca, mountPath: /var/run/db-ca, readOnly: true}
+            - {name: secrets, mountPath: /var/run/secrets/cravedrop, readOnly: true}
       volumes:
         - name: tmp
           emptyDir: {sizeLimit: 32Mi}
         - name: database-ca
           configMap: {name: database-ca}
+        - name: secrets
+          secret: {secretName: backend-secrets, defaultMode: 288}
       topologySpreadConstraints:
         - maxSkew: 1
           topologyKey: kubernetes.io/hostname
@@ -58,6 +61,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: backend
+  namespace: cravedrop
 spec:
   selector: {app: backend}
   ports: [{name: http, port: 5000, targetPort: http}]
@@ -66,6 +70,7 @@ apiVersion: policy/v1
 kind: PodDisruptionBudget
 metadata:
   name: backend
+  namespace: cravedrop
 spec:
   minAvailable: 1
   selector:

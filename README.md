@@ -125,8 +125,10 @@ does not provision the database, DNS, state bucket or Argo CD. Production exampl
 use `cravedrop.example.com`; configure your domain, origin, VPC CIDRs and image
 digests before syncing. The `bootstrap` image tags are placeholders, not releases.
 
-GitHub Actions publishes commit-tagged images only after main passes all platform
-checks. It records image digests and provenance/SBOM metadata. Release image
+GitHub Actions publishes commit-tagged images after main passes all platform
+checks. Owner-authored, same-repository PRs can also publish tested review images
+when the `PUBLISH_REVIEW_IMAGES` repository variable is explicitly enabled.
+It records image digests and provenance/SBOM metadata. Release image
 changes go through a PR; workflows do not push deployment edits directly to main.
 Argo CD sync is operator-initiated by default.
 
