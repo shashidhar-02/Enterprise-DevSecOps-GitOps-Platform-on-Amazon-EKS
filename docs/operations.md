@@ -84,7 +84,10 @@ accordingly. The in-memory request limiter is per replica, not a distributed quo
    ```
 
    Add the frontend digest too. Review/render both overlays in the release PR.
-   The literal `bootstrap` base tags intentionally cannot serve as production releases.
+   The base includes verified review-image digests published by the repository's
+   passing container/application pipeline. Treat promotion as a release decision,
+   configure registry pull access, and override digests in the environment overlay
+   for subsequent releases.
 4. Bootstrap the Argo CD project/applications after their source paths exist on main:
 
    ```bash

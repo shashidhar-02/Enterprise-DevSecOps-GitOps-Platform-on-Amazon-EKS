@@ -123,7 +123,8 @@ operator roles, access to the private cluster API, a managed PostgreSQL database
 Argo CD, an Auto Mode ALB IngressClass and a matching ACM certificate. Terraform
 does not provision the database, DNS, state bucket or Argo CD. Production examples
 use `cravedrop.example.com`; configure your domain, origin, VPC CIDRs and image
-digests before syncing. The `bootstrap` image tags are placeholders, not releases.
+digests before syncing. The base references verified GHCR review-image digests;
+review/promote them for your environment and configure package pull access.
 
 GitHub Actions publishes commit-tagged images after main passes all platform
 checks. Owner-authored, same-repository PRs can also publish tested review images

@@ -19,7 +19,7 @@ spec:
       securityContext: {runAsNonRoot: true, runAsUser: 10001, runAsGroup: 10001, fsGroup: 10001, seccompProfile: {type: RuntimeDefault}}
       containers:
         - name: backend
-          image: ghcr.io/shashidhar-02/enterprise-devsecops-gitops-platform-on-amazon-eks/cravedrop-backend:bootstrap
+          image: ghcr.io/shashidhar-02/enterprise-devsecops-gitops-platform-on-amazon-eks/cravedrop-backend@sha256:2bcd3b845d013dc381e42e2148f73863ee2a4013e1704b44363078d8d3ef3270
           imagePullPolicy: Always
           ports: [{name: http, containerPort: 5000}]
           envFrom:
