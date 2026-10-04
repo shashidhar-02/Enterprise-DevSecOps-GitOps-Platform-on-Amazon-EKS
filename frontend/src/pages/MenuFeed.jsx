@@ -32,7 +32,7 @@ const MenuFeed = () => {
         setLoading(false);
       }
     };
-    fetchRestaurants();
+    void fetchRestaurants();
   }, []);
 
   if (loading) {

@@ -31,7 +31,7 @@ const DishDetails = () => {
         setLoading(false);
       }
     };
-    fetchDetails();
+    void fetchDetails();
   }, [id]);
 
   if (loading) {

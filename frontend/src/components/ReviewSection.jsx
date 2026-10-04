@@ -27,7 +27,7 @@ export default function ReviewSection({ restaurantId }) {
         {[5, 4, 3, 2, 1].map((value) => <option key={value} value={value}>{value}</option>)}
       </select></label>
       <textarea aria-label="Your review" value={comment} onChange={(event) => setComment(event.target.value)} maxLength={2000} required />
-      <button disabled={busy}>{busy ? 'Posting…' : 'Post review'}</button>
+      <button type="submit" disabled={busy}>{busy ? 'Posting…' : 'Post review'}</button>
     </form>
     {error && <p role="alert">{error}</p>}
     {reviews.map((review) => <article key={review.id}><strong>{review.author} — {review.rating}/5</strong><p>{review.comment}</p></article>)}

@@ -40,8 +40,8 @@ const CartSidebar = ({ isOpen, onClose, user }) => {
 
   return (
     <>
-      <div className={`cart-overlay ${isOpen ? 'open' : ''}`} onClick={onClose}></div>
-      <div className={`cart-sidebar ${isOpen ? 'open' : ''}`}>
+      {isOpen && <button type="button" aria-label="Close cart" className="cart-overlay open" style={{ border: 0 }} onClick={onClose} />}
+      <div className={`cart-sidebar ${isOpen ? 'open' : ''}`} hidden={!isOpen}>
         <div style={{ padding: '1.5rem', display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border-light)' }}>
           <h2 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 800 }}>Cart</h2>
           <button onClick={onClose} style={{ background: 'transparent', border: 'none', fontSize: '1.5rem', cursor: 'pointer' }}>×</button>

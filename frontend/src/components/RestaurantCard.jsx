@@ -1,8 +1,7 @@
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 
 const RestaurantCard = ({ restaurant }) => {
-  const navigate = useNavigate();
 
   // Handle missing or differently structured data from the old backend gracefully
   const name = restaurant.name || 'Unknown Restaurant';
@@ -12,7 +11,7 @@ const RestaurantCard = ({ restaurant }) => {
   const deliveryTime = restaurant.delivery_time || 'Estimate unavailable';
 
   return (
-    <div className="restaurant-card" onClick={() => navigate(`/restaurant/${restaurant.id}`)}>
+    <Link className="restaurant-card" to={`/restaurant/${restaurant.id}`} style={{ color: 'inherit', textDecoration: 'none' }}>
       <div style={{ position: 'relative' }}>
         <img className="restaurant-card-img" src={imageUrl} alt={name} />
       </div>
@@ -27,7 +26,7 @@ const RestaurantCard = ({ restaurant }) => {
           {restaurant.location || 'Bangalore'}
         </div>
       </div>
-    </div>
+    </Link>
   );
 };
 

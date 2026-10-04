@@ -68,6 +68,8 @@ module "eks" {
     enabled    = true
     node_pools = ["general-purpose", "system"]
   }
+  # Auto Mode uses EKS-managed node security groups, not the legacy node-group SG.
+  create_node_security_group = false
 
   # Networking
   vpc_id     = module.vpc.vpc_id

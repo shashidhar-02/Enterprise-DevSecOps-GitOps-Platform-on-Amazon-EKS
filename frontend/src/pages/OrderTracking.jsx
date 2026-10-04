@@ -26,7 +26,7 @@ const OrderTracking = () => {
       }
     };
 
-    fetchOrder();
+    void fetchOrder();
 
     // 2. Connect to WebSocket
     const socket = io({ transports: ['websocket'], withCredentials: true });
@@ -40,7 +40,7 @@ const OrderTracking = () => {
       console.log('Real-time update received:', data);
       setCurrentStatus(data.status);
     });
-    const refresh = setInterval(fetchOrder, 10000);
+    const refresh = setInterval(() => { void fetchOrder(); }, 10000);
 
     return () => {
       socket.disconnect();
