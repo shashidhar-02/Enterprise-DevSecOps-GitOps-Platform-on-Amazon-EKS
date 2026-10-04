@@ -1,0 +1,16 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - backend.yaml
+  - frontend.yaml
+  - networking.yaml
+configMapGenerator:
+  - name: backend-config
+    literals:
+      - NODE_ENV=production
+      - PORT=5000
+      - DB_PORT=5432
+      - DB_SSL=true
+      - DB_CA_FILE=/var/run/db-ca/rds-ca.pem
+      - TRUST_PROXY_HOPS=1
+      - ALLOWED_ORIGINS=https://cravedrop.example.com

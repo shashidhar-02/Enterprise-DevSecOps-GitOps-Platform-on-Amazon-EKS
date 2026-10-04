@@ -1,0 +1,20 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: cravedrop
+  namespace: argocd
+spec:
+  description: CraveDrop application deployments
+  sourceRepos: [https://github.com/shashidhar-02/Enterprise-DevSecOps-GitOps-Platform-on-Amazon-EKS.git]
+  destinations:
+    - {server: 'https://kubernetes.default.svc', namespace: cravedrop-dev}
+    - {server: 'https://kubernetes.default.svc', namespace: cravedrop-prod}
+  clusterResourceWhitelist:
+    - {group: '', kind: Namespace}
+  namespaceResourceWhitelist:
+    - {group: '', kind: ConfigMap}
+    - {group: '', kind: Service}
+    - {group: apps, kind: Deployment}
+    - {group: policy, kind: PodDisruptionBudget}
+    - {group: networking.k8s.io, kind: NetworkPolicy}
+    - {group: networking.k8s.io, kind: Ingress}
