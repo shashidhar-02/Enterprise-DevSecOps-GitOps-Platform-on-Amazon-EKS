@@ -9,7 +9,7 @@ on:
 permissions:
   contents: read
 jobs:
-  scan:
+  MSDO:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:

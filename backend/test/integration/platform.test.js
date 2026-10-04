@@ -22,7 +22,7 @@ test('PostgreSQL signup, ownership, checkout, migrations and authenticated order
   sockets = initSockets(server, pool, security);
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
   t.after(() => new Promise((resolve) => sockets.close(resolve)));
-  const origin = `http://127.0.0.1:${server.address().port}`;
+  const origin = `http://localhost:${server.address().port}`;
   const request = async (path, method = 'GET', body, cookie) => {
     const headers = { 'content-type': 'application/json', ...(cookie ? { cookie } : {}) };
     if (method !== 'GET') {

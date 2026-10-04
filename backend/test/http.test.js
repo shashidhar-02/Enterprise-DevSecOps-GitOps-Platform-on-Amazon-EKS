@@ -12,7 +12,7 @@ async function fixture(t, query) {
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
   t.after(() => new Promise((resolve) => server.close(resolve)));
   const token = jwt.sign({}, secret, { subject: '1', issuer: 'cravedrop', audience: 'cravedrop-web', expiresIn: '1d' });
-  const request = (path, options = {}) => fetch(`http://127.0.0.1:${server.address().port}/api${path}`, options);
+  const request = (path, options = {}) => fetch(`http://localhost:${server.address().port}/api${path}`, options);
   const headers = { authorization: `Bearer ${token}`, 'content-type': 'application/json' };
   const csrf = await request('/auth/csrf', { headers });
   headers.cookie = csrf.headers.getSetCookie().map((cookie) => cookie.split(';')[0]).join('; ');

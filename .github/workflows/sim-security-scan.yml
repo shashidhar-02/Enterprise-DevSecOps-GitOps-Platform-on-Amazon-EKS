@@ -1,11 +1,6 @@
 name: Optional Sim integration
 on:
   workflow_dispatch:
-    inputs:
-      pull_request:
-        description: Pull request number to send to the configured Sim workflow
-        required: true
-        type: number
 permissions:
   contents: read
   pull-requests: read
@@ -15,13 +10,14 @@ jobs:
     timeout-minutes: 5
     env:
       GH_TOKEN: ${{ github.token }}
-      PR_NUMBER: ${{ inputs.pull_request }}
+      PR_NUMBER: ${{ vars.SIM_PULL_REQUEST_NUMBER }}
       SIM_API_KEY: ${{ secrets.SIM_API_KEY }}
       SIM_WORKFLOW_URL: ${{ vars.SIM_WORKFLOW_URL }}
     steps:
       - name: Submit structured PR metadata
         run: |
           test -n "$SIM_API_KEY"
+          [[ "$PR_NUMBER" =~ ^[1-9][0-9]*$ ]]
           [[ "$SIM_WORKFLOW_URL" == https://sim.ai/api/workflows/*/execute ]]
           gh api "repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER" > pr.json
           jq -n --slurpfile pr pr.json '{action: "manual", number: $pr[0].number, pull_request: $pr[0]}' > payload.json

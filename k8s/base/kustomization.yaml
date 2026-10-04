@@ -12,5 +12,5 @@ configMapGenerator:
       - DB_PORT=5432
       - DB_SSL=true
       - DB_CA_FILE=/var/run/db-ca/rds-ca.pem
-      - TRUST_PROXY_HOPS=1
+      - TRUST_PROXY_HOPS=2
       - ALLOWED_ORIGINS=https://cravedrop.example.com

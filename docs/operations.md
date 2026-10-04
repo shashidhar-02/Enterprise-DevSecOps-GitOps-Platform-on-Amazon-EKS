@@ -60,9 +60,10 @@ and reference it in the deployment. GitOps deliberately contains no passwords or
 Secrets. Do not commit plaintext or base64-encoded secret values.
 
 Edit the environment's origin, ingress hostname, VPC/database network-policy
-CIDRs and reviewed image digests. `TRUST_PROXY_HOPS=1` trusts the frontend proxy
-immediately before the backend; backend ingress is restricted to frontend pods.
-If adding a proxy layer, verify the forwarded-address chain and adjust the count
+CIDRs and reviewed image digests. Production `TRUST_PROXY_HOPS=2` trusts the
+frontend and ALB chain; development uses `1` for the frontend alone. Backend
+ingress is restricted to frontend pods. If changing proxy layers, verify the
+forwarded-address chain and adjust the count
 accordingly. The in-memory request limiter is per replica, not a distributed quota.
 
 ## Release and promotion
