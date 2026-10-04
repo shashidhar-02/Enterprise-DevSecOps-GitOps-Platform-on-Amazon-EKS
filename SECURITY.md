@@ -16,6 +16,7 @@ project. Security fixes target the current `main` implementation.
 The API hashes passwords with salted scrypt (`N=32768`, `r=8`, `p=3`) and validates
 JWT algorithm, issuer, audience, expiry and current database identity. Production
 session cookies are HttpOnly, Secure and SameSite strict. Origin allowlisting,
+signed session-bound double-submit CSRF tokens on unsafe methods,
 JSON-only bounded input, request limits and ownership checks apply to writes.
 Catalogue prices and authenticated identity are authoritative at checkout.
 

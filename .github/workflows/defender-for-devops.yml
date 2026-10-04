@@ -10,7 +10,7 @@ permissions:
   contents: read
 jobs:
   scan:
-    runs-on: windows-latest
+    runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:
       contents: read

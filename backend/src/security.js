@@ -75,7 +75,7 @@ function createSecurity(pool, secret, production) {
     issue: (res, user) => {
       const token = jwt.sign({}, secret, {
         subject: String(user.id), algorithm: 'HS256', issuer: 'cravedrop',
-        audience: 'cravedrop-web', expiresIn: '1d',
+        audience: 'cravedrop-web', expiresIn: '1d', jwtid: crypto.randomUUID(),
       });
       res.cookie(COOKIE_NAME, token, { ...cookieOptions, maxAge: 86400000 });
     },

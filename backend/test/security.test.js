@@ -49,6 +49,9 @@ test('sessions require the expected issuer, algorithm and a current database acc
   assert.equal(session.options.secure, true);
   assert.equal(session.options.sameSite, 'strict');
   assert.equal((await security.userForToken(session.token)).id, 7);
+  const firstToken = session.token;
+  security.issue({ cookie: (_name, token) => { session.token = token; } }, { id: 7 });
+  assert.notEqual(session.token, firstToken);
   await assert.rejects(security.userForToken(jwt.sign({ sub: '7' }, secret)), { status: 401 });
   await assert.rejects(security.userForToken(jwt.sign({}, secret, {
     subject: '8', issuer: 'cravedrop', audience: 'cravedrop-web', expiresIn: '1d',

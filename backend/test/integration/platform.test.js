@@ -24,8 +24,15 @@ test('PostgreSQL signup, ownership, checkout, migrations and authenticated order
   t.after(() => new Promise((resolve) => sockets.close(resolve)));
   const origin = `http://127.0.0.1:${server.address().port}`;
   const request = async (path, method = 'GET', body, cookie) => {
+    const headers = { 'content-type': 'application/json', ...(cookie ? { cookie } : {}) };
+    if (method !== 'GET') {
+      const csrf = await fetch(`${origin}/api/auth/csrf`, { headers });
+      assert.equal(csrf.status, 200);
+      headers.cookie = [cookie, ...csrf.headers.getSetCookie().map((value) => value.split(';')[0])].filter(Boolean).join('; ');
+      headers['x-csrf-token'] = (await csrf.json()).csrfToken;
+    }
     const response = await fetch(`${origin}/api${path}`, { method,
-      headers: { 'content-type': 'application/json', ...(cookie ? { cookie } : {}) },
+      headers,
       body: body === undefined ? undefined : JSON.stringify(body) });
     return { status: response.status, data: await response.json(), cookie: response.headers.get('set-cookie')?.split(';')[0] };
   };

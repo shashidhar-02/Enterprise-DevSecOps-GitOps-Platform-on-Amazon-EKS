@@ -4,10 +4,12 @@ const helmet = require('helmet');
 const cookieParser = require('cookie-parser');
 const { rateLimit } = require('express-rate-limit');
 const { createSecurity, HttpError, wrap } = require('./security');
+const { createCsrf } = require('./csrf');
 
 function createApp({ pool, jwtSecret, production = false, emit = () => {} }) {
   const app = express();
   const security = createSecurity(pool, jwtSecret, production);
+  const csrf = createCsrf(security, jwtSecret, production);
   const origins = (process.env.ALLOWED_ORIGINS || 'http://localhost:3000,http://localhost:8080').split(',').map((origin) => origin.trim());
   app.disable('x-powered-by');
   const proxyHops = Number(process.env.TRUST_PROXY_HOPS || 0);
@@ -20,12 +22,15 @@ function createApp({ pool, jwtSecret, production = false, emit = () => {} }) {
   app.use(cookieParser());
   app.use(express.json({ limit: '32kb' }));
   app.get('/api/health', (_req, res) => res.json({ status: 'ok' }));
+  app.use('/api', rateLimit({ windowMs: 60000, limit: 120, standardHeaders: 'draft-8', legacyHeaders: false }));
   app.get('/api/ready', wrap(async (_req, res) => {
     try { await pool.query('SELECT 1'); } catch { throw new HttpError(503, 'Database unavailable'); }
     res.json({ status: 'ready' });
   }));
-  app.use('/api', rateLimit({ windowMs: 60000, limit: 120, standardHeaders: 'draft-8', legacyHeaders: false }));
-  app.use('/api/auth', rateLimit({ windowMs: 60000, limit: 30, standardHeaders: 'draft-8', legacyHeaders: false }), require('./routes/auth')(pool, security));
+  app.use('/api/auth', rateLimit({ windowMs: 60000, limit: 30, standardHeaders: 'draft-8', legacyHeaders: false }));
+  app.get('/api/auth/csrf', csrf.token);
+  app.use('/api', csrf.protect);
+  app.use('/api/auth', require('./routes/auth')(pool, security));
   app.use('/api/restaurants', require('./routes/restaurants')(pool, security));
   app.use('/api/orders', require('./routes/orders')(pool, security, emit));
   app.use('/api/reviews', require('./routes/reviews')(pool, security));
@@ -33,6 +38,7 @@ function createApp({ pool, jwtSecret, production = false, emit = () => {} }) {
   app.use((error, _req, res, _next) => {
     const status = error.code === '23505' || error.code === '23503' ? 409 : error.status || 500;
     if (status >= 500) console.error('Request failed:', error.code || 'internal');
+    if (error.code === 'EBADCSRFTOKEN') return res.status(403).json({ error: 'Invalid CSRF token', code: error.code });
     res.status(status).json({ error: error.type === 'entity.parse.failed' ? 'Invalid JSON' : status >= 500 ? 'Service unavailable' :
       error.code ? 'Conflicting record' : error.message });
   });

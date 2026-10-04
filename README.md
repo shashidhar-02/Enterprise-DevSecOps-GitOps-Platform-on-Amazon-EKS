@@ -140,6 +140,7 @@ and order access require authentication.
 | `GET /health`, `GET /ready` | Liveness; database-dependent readiness |
 | `POST /auth/signup`, `/auth/login`, `/auth/logout` | Session lifecycle |
 | `GET /auth/me` | Current authenticated account |
+| `GET /auth/csrf` | Signed, session-bound CSRF token; send it in `X-CSRF-Token` for writes |
 | `GET /restaurants`, `GET /restaurants/:id`, `GET /restaurants/:id/dishes` | Bounded catalogue/search/menu reads |
 | `POST /restaurants` | Create a restaurant owned by the current account |
 | `PUT/DELETE /restaurants/:id`, `POST /restaurants/:id/dishes` | Owner or administrator |

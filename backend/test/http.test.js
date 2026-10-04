@@ -14,6 +14,9 @@ async function fixture(t, query) {
   const token = jwt.sign({}, secret, { subject: '1', issuer: 'cravedrop', audience: 'cravedrop-web', expiresIn: '1d' });
   const request = (path, options = {}) => fetch(`http://127.0.0.1:${server.address().port}/api${path}`, options);
   const headers = { authorization: `Bearer ${token}`, 'content-type': 'application/json' };
+  const csrf = await request('/auth/csrf', { headers });
+  headers.cookie = csrf.headers.getSetCookie().map((cookie) => cookie.split(';')[0]).join('; ');
+  headers['x-csrf-token'] = (await csrf.json()).csrfToken;
   return { request, headers };
 }
 
@@ -67,4 +70,15 @@ test('invalid and oversized JSON fail closed with client errors', async (t) => {
   assert.equal((await invalid.json()).error, 'Invalid JSON');
   assert.equal((await request('/auth/login', { method: 'POST', headers,
     body: JSON.stringify({ data: 'x'.repeat(33000) }) })).status, 413);
+});
+
+test('mutation requests reject missing, forged and cross-session CSRF tokens', async (t) => {
+  const { request, headers } = await fixture(t, async () => ({ rows: [] }));
+  const body = '{}';
+  assert.equal((await request('/auth/logout', { method: 'POST', headers: { 'content-type': 'application/json' }, body })).status, 403);
+  assert.equal((await request('/auth/logout', { method: 'POST', headers: { ...headers, 'x-csrf-token': 'forged' }, body })).status, 403);
+  assert.equal((await request('/auth/logout', { method: 'POST', headers: { ...headers,
+    cookie: 'cravedrop_csrf=forged', 'x-csrf-token': 'forged' }, body })).status, 403);
+  assert.equal((await request('/auth/logout', { method: 'POST', headers: { ...headers, authorization: 'Bearer different-session' }, body })).status, 403);
+  assert.equal((await request('/auth/logout', { method: 'POST', headers, body })).status, 200);
 });
