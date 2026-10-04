@@ -1,0 +1,11 @@
+name: Feature request
+description: Propose an application or platform improvement
+body:
+  - type: textarea
+    id: need
+    attributes: {label: User need, description: Describe the problem this would solve.}
+    validations: {required: true}
+  - type: textarea
+    id: proposal
+    attributes: {label: Proposed change, description: Include expected behavior and deployment/data impact.}
+    validations: {required: true}

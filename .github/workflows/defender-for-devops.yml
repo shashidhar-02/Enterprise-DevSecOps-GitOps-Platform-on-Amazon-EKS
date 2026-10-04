@@ -1,51 +1,27 @@
-# This workflow uses actions that are not certified by GitHub.
-# They are provided by a third-party and are governed by
-# separate terms of service, privacy policy, and support
-# documentation.
-#
-# Microsoft Security DevOps (MSDO) is a command line application which integrates static analysis tools into the development cycle.
-# MSDO installs, configures and runs the latest versions of static analysis tools
-# (including, but not limited to, SDL/security and compliance tools).
-#
-# The Microsoft Security DevOps action is currently in beta and runs on the windows-latest queue,
-# as well as Windows self hosted agents. ubuntu-latest support coming soon.
-#
-# For more information about the action , check out https://github.com/microsoft/security-devops-action
-#
-# Please note this workflow do not integrate your GitHub Org with Microsoft Defender For DevOps. You have to create an integration
-# and provide permission before this can report data back to azure.
-# Read the official documentation here : https://learn.microsoft.com/en-us/azure/defender-for-cloud/quickstart-onboard-github
-
-name: "Microsoft Defender For Devops"
-
-permissions:
-  contents: read
-  security-events: write
-
+name: Microsoft Security DevOps
 on:
   push:
-    branches: [ "main" ]
+    branches: [main]
   pull_request:
-    branches: [ "main" ]
   schedule:
     - cron: '38 12 * * 3'
-
+  workflow_dispatch:
+permissions:
+  contents: read
 jobs:
-  MSDO:
-    # currently only windows latest is supported
+  scan:
     runs-on: windows-latest
-
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      security-events: write
     steps:
-    - uses: actions/checkout@v4
-    - uses: actions/setup-dotnet@v4
-      with:
-        dotnet-version: |
-          5.0.x
-          6.0.x
-    - name: Run Microsoft Security DevOps
-      uses: microsoft/security-devops-action@v1.6.0
-      id: msdo
-    - name: Upload results to Security tab
-      uses: github/codeql-action/upload-sarif@v3
-      with:
-        sarif_file: ${{ steps.msdo.outputs.sarifFile }}
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # v5
+        with:
+          dotnet-version: '8.0.x'
+      - id: scan
+        uses: microsoft/security-devops-action@08976cb623803b1b36d7112d4ff9f59eae704de0 # v1.12.0
+      - uses: github/codeql-action/upload-sarif@88585263c0627ee42c0e1c5143a112c8d6f4aa18 # v4.38.2
+        with:
+          sarif_file: ${{ steps.scan.outputs.sarifFile }}

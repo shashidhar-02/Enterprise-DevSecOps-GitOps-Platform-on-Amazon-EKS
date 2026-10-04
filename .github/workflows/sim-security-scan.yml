@@ -1,44 +1,30 @@
-# .github/workflows/sim-security-scan.yml
-# Place this file in your repo at: .github/workflows/sim-security-scan.yml
-
-name: AI Security Scanner
-
+name: Optional Sim integration
 on:
-  pull_request:
-    types: [opened, synchronize, reopened]
-
-permissions: {}
-
+  workflow_dispatch:
+    inputs:
+      pull_request:
+        description: Pull request number to send to the configured Sim workflow
+        required: true
+        type: number
+permissions:
+  contents: read
+  pull-requests: read
 jobs:
-  security-scan:
+  submit:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      GH_TOKEN: ${{ github.token }}
+      PR_NUMBER: ${{ inputs.pull_request }}
+      SIM_API_KEY: ${{ secrets.SIM_API_KEY }}
+      SIM_WORKFLOW_URL: ${{ vars.SIM_WORKFLOW_URL }}
     steps:
-      - name: Trigger Sim.ai Security Scan
+      - name: Submit structured PR metadata
         run: |
-          curl -s -X POST \
-            "https://sim.ai/api/workflows/45d62250-3c46-430d-8cf8-ba658804b20f/execute" \
-            -H "Content-Type: application/json" \
-            -H "x-api-key: ${{ secrets.SIM_API_KEY }}" \
-            -d '{
-              "action": "${{ github.event.action }}",
-              "number": ${{ github.event.pull_request.number }},
-              "pull_request": {
-                "title": ${{ toJSON(github.event.pull_request.title) }},
-                "body": ${{ toJSON(github.event.pull_request.body) }},
-                "user": { "login": "${{ github.event.pull_request.user.login }}" },
-                "head": { "sha": "${{ github.event.pull_request.head.sha }}" },
-                "html_url": "${{ github.event.pull_request.html_url }}",
-                "state": "${{ github.event.pull_request.state }}",
-                "additions": ${{ github.event.pull_request.additions }},
-                "deletions": ${{ github.event.pull_request.deletions }},
-                "changed_files": ${{ github.event.pull_request.changed_files }}
-              },
-              "repository": {
-                "full_name": "${{ github.repository }}",
-                "name": "${{ github.event.repository.name }}",
-                "owner": { "login": "${{ github.repository_owner }}" },
-                "private": ${{ github.event.repository.private }}
-              },
-              "sender": { "login": "${{ github.actor }}" }
-            }'
-          echo "Security scan triggered successfully"
+          test -n "$SIM_API_KEY"
+          [[ "$SIM_WORKFLOW_URL" == https://sim.ai/api/workflows/*/execute ]]
+          gh api "repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER" > pr.json
+          jq -n --slurpfile pr pr.json '{action: "manual", number: $pr[0].number, pull_request: $pr[0]}' > payload.json
+          curl --fail-with-body --silent --show-error --max-time 60 --retry 2 \
+            -H 'Content-Type: application/json' -H "x-api-key: $SIM_API_KEY" \
+            --data-binary @payload.json "$SIM_WORKFLOW_URL"
