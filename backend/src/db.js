@@ -1,61 +1,29 @@
+const fs = require('node:fs');
+const path = require('node:path');
 const { Pool } = require('pg');
+require('./config').loadSecretFiles();
 
 const pool = new Pool({
-  user: process.env.DB_USER,
-  password: process.env.DB_PASSWORD,
-  host: process.env.DB_HOST,
-  port: parseInt(process.env.DB_PORT, 10),
-  database: process.env.DB_NAME,
+  user: process.env.DB_USER, password: process.env.DB_PASSWORD,
+  host: process.env.DB_HOST, port: Number(process.env.DB_PORT || 5432), database: process.env.DB_NAME,
+  max: 10, connectionTimeoutMillis: 5000, idleTimeoutMillis: 30000,
+  statement_timeout: 5000, query_timeout: 5000,
+  ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: true,
+    ...(process.env.DB_CA_FILE ? { ca: fs.readFileSync(process.env.DB_CA_FILE, 'utf8') } : {}) } : undefined,
 });
+pool.on('error', () => console.error('Unexpected database pool error'));
 
 async function initDB() {
   const client = await pool.connect();
   try {
-    // 1. Create Restaurants Table
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS restaurants (
-        id SERIAL PRIMARY KEY,
-        name VARCHAR(255) NOT NULL,
-        description TEXT,
-        category VARCHAR(100) NOT NULL,
-        emoji VARCHAR(10) DEFAULT '🍔',
-        created_at TIMESTAMP DEFAULT NOW(),
-        updated_at TIMESTAMP DEFAULT NOW()
-      );
-    `);
-
-    // 2. Create Orders Table
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS orders (
-        id SERIAL PRIMARY KEY,
-        user_id VARCHAR(100) NOT NULL,
-        restaurant_id INTEGER REFERENCES restaurants(id) ON DELETE CASCADE,
-        items JSONB NOT NULL,
-        total_amount DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
-        status VARCHAR(50) DEFAULT 'Preparing',
-        created_at TIMESTAMP DEFAULT NOW(),
-        updated_at TIMESTAMP DEFAULT NOW()
-      );
-    `);
-
-    // 3. Create Reviews Table
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS reviews (
-        id SERIAL PRIMARY KEY,
-        restaurant_id INTEGER REFERENCES restaurants(id) ON DELETE CASCADE,
-        author VARCHAR(100) NOT NULL DEFAULT 'Hungry Foodie',
-        rating INTEGER CHECK (rating >= 1 AND rating <= 5),
-        comment TEXT NOT NULL,
-        created_at TIMESTAMP DEFAULT NOW()
-      );
-    `);
-
-    console.log('✅ CraveDrop Database tables initialized');
-  } catch (err) {
-    console.error('❌ Error initializing database tables:', err);
-  } finally {
-    client.release();
-  }
+    await client.query('BEGIN');
+    await client.query('SELECT pg_advisory_xact_lock(71500)');
+    await client.query(fs.readFileSync(path.join(__dirname, 'schema.sql'), 'utf8'));
+    await client.query('COMMIT');
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally { client.release(); }
 }
 
 module.exports = { pool, initDB };

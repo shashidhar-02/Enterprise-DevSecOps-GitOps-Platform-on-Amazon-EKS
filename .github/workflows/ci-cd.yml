@@ -1,437 +1,205 @@
-# ==============================================================
-# CraveDrop - DevSecOps CI/CD Pipeline
-# ==============================================================
-# Triggers on every push and pull request.
-# Stages: Lint → SCA → Build → Image Scan → IaC Scan → Deploy Manifest Update
-# ==============================================================
-name: CraveDrop DevSecOps Pipeline
-
+name: Platform Quality
 on:
   push:
-    branches: ["*"]
+    branches: [main]
   pull_request:
-    branches: ["*"]
-
-# Security: restrict default permissions to read-only
+  workflow_dispatch:
 permissions:
   contents: read
-
-env:
-  DOCKER_REGISTRY: ghcr.io
-  BACKEND_IMAGE: ghcr.io/${{ github.repository }}/cravedrop-backend
-  FRONTEND_IMAGE: ghcr.io/${{ github.repository }}/cravedrop-frontend
-
+concurrency:
+  group: quality-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
-  # ==============================================================
-  # STAGE 1: Linting
-  # ==============================================================
-  lint:
-    name: "🔍 Lint Code"
+  application:
+    name: Application (${{ matrix.component }})
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     strategy:
+      fail-fast: false
       matrix:
-        include:
-          - component: backend
-            path: backend
-            cache-dependency-path: backend/package-lock.json
-            cache: npm
-          - component: frontend
-            path: frontend
-            cache-dependency-path: frontend/yarn.lock
-            cache: yarn
+        component: [backend, frontend]
+    defaults:
+      run:
+        working-directory: ${{ matrix.component }}
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
-          fetch-depth: 0
-
-      - name: List repository root (diagnostic)
-        run: |
-          echo "PWD: $(pwd)"
-          ls -la
-
-      - name: Create expected component symlinks (fallback)
-        run: |
-          if [ ! -d backend ] && [ -d services/backend ]; then
-            ln -s services/backend backend
-            echo "Created symlink backend -> services/backend"
-          fi
-          if [ ! -d frontend ] && [ -d web/frontend ]; then
-            ln -s web/frontend frontend
-            echo "Created symlink frontend -> web/frontend"
-          fi
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "24"
-
-      - name: Find lockfile
-        id: lockfile
-        run: |
-          if [ -f "${{ matrix.path }}/yarn.lock" ]; then
-            echo "file=yarn.lock" >> $GITHUB_OUTPUT
-          elif [ -f "${{ matrix.path }}/package-lock.json" ]; then
-            echo "file=package-lock.json" >> $GITHUB_OUTPUT
-          else
-            echo "file=" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Cache dependencies
-        if: steps.lockfile.outputs.file != ''
-        uses: actions/cache@v4
-        with:
-          path: |
-            ${{ matrix.path }}/node_modules
-            ~/.npm
-            ~/.cache/yarn
-          key: ${{ runner.os }}-deps-${{ matrix.component }}-${{ hashFiles(format('{0}/{1}', matrix.path, steps.lockfile.outputs.file)) }}
-          restore-keys: |
-            ${{ runner.os }}-deps-${{ matrix.component }}-
-
-      - name: Install dependencies
-        working-directory: ${{ matrix.path }}
-        run: |
-          if [ "${{ matrix.cache }}" = "yarn" ]; then
-            yarn install --frozen-lockfile
-          else
-            npm ci
-          fi
-
-      - name: Run ESLint
-        working-directory: ${{ matrix.path }}
-        run: |
-          if [ "${{ matrix.cache }}" = "yarn" ]; then
-            yarn lint || true
-          else
-            npm run lint || true
-          fi
-
-  # ==============================================================
-  # STAGE 2: Software Composition Analysis (SCA) — Dependency Audit
-  # ==============================================================
-  sca:
-    name: "🛡️ Dependency Audit"
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: ${{ matrix.component }}/package-lock.json
+      - run: npm ci --ignore-scripts
+      - run: npm run lint
+      - run: npm test
+      - run: npm audit --audit-level=moderate
+      - if: matrix.component == 'frontend'
+        run: npm run build
+  integration:
+    name: PostgreSQL and WebSocket integration
     runs-on: ubuntu-latest
-    needs: lint
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: cravedrop_test
+          POSTGRES_USER: cravedrop_test
+          POSTGRES_PASSWORD: ephemeral-test-only
+        ports: [5432:5432]
+        options: >-
+          --health-cmd "pg_isready -U cravedrop_test -d cravedrop_test"
+          --health-interval 5s --health-timeout 5s --health-retries 15
+    env:
+      NODE_ENV: test
+      DB_HOST: localhost
+      DB_PORT: 5432
+      DB_USER: cravedrop_test
+      DB_NAME: cravedrop_test
+      DB_PASSWORD: ephemeral-test-only
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - run: npm ci --ignore-scripts --prefix backend
+      - run: npm --prefix backend run test:integration
+  containers:
+    name: Container security (${{ matrix.component }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
     strategy:
+      fail-fast: false
       matrix:
-        include:
-          - component: backend
-            path: backend
-            cache-dependency-path: backend/package-lock.json
-            cache: npm
-          - component: frontend
-            path: frontend
-            cache-dependency-path: frontend/yarn.lock
-            cache: yarn
+        component: [backend, frontend]
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: hadolint/hadolint-action@2332a7b74a6de0dda2e2221d575162eba76ba5e5 # v3.3.0
         with:
-          fetch-depth: 0
-
-      - name: List repository root (diagnostic)
-        run: |
-          echo "PWD: $(pwd)"
-          ls -la
-
-      - name: Create expected component symlinks (fallback)
-        run: |
-          if [ ! -d backend ] && [ -d services/backend ]; then
-            ln -s services/backend backend
-            echo "Created symlink backend -> services/backend"
-          fi
-          if [ ! -d frontend ] && [ -d web/frontend ]; then
-            ln -s web/frontend frontend
-            echo "Created symlink frontend -> web/frontend"
-          fi
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+          dockerfile: ${{ matrix.component }}/Dockerfile
+          failure-threshold: warning
+      - run: docker build -t cravedrop-${{ matrix.component }}:ci ./${{ matrix.component }}
+      - uses: aquasecurity/trivy-action@a9c7b0f06e461e9d4b4d1711f154ee024b8d7ab8 # v0.36.0
         with:
-          node-version: "24"
-
-      - name: Find lockfile
-        id: lockfile
-        run: |
-          if [ -f "${{ matrix.path }}/yarn.lock" ]; then
-            echo "file=yarn.lock" >> $GITHUB_OUTPUT
-          elif [ -f "${{ matrix.path }}/package-lock.json" ]; then
-            echo "file=package-lock.json" >> $GITHUB_OUTPUT
-          else
-            echo "file=" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Cache dependencies
-        if: steps.lockfile.outputs.file != ''
-        uses: actions/cache@v4
-        with:
-          path: |
-            ${{ matrix.path }}/node_modules
-            ~/.npm
-            ~/.cache/yarn
-          key: ${{ runner.os }}-deps-${{ matrix.component }}-${{ hashFiles(format('{0}/{1}', matrix.path, steps.lockfile.outputs.file)) }}
-          restore-keys: |
-            ${{ runner.os }}-deps-${{ matrix.component }}-
-
-      - name: Install dependencies
-        working-directory: ${{ matrix.path }}
-        run: |
-          if [ "${{ matrix.cache }}" = "yarn" ]; then
-            yarn install --frozen-lockfile
-          else
-            npm ci
-          fi
-
-      # npm audit for known vulnerabilities (fail on high/critical)
-      - name: npm audit / yarn audit
-        working-directory: ${{ matrix.path }}
-        run: |
-          if [ -f "${{ matrix.path }}/package-lock.json" ]; then
-            npm audit --audit-level=high || true
-          elif [ -f "${{ matrix.path }}/yarn.lock" ]; then
-            yarn audit --level=high || true
-          fi
-        # `|| true` to not fail on moderate — adjust in prod
-
-  # ==============================================================
-  # STAGE 3: Build & Push Container Images
-  # ==============================================================
-  build:
-    name: "🐳 Build ${{ matrix.component }}"
+          image-ref: cravedrop-${{ matrix.component }}:ci
+          scanners: vuln
+          severity: CRITICAL,HIGH
+          exit-code: '1'
+          timeout: 10m
+  configuration:
+    name: Terraform, GitOps and workflow validation
     runs-on: ubuntu-latest
-    needs: sca
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4
+        with:
+          terraform_version: '1.13.4'
+      - run: terraform fmt -check -recursive terraform/
+      - run: terraform -chdir=terraform init -backend=false -input=false -lockfile=readonly
+      - run: terraform -chdir=terraform validate
+      - uses: azure/setup-kubectl@c0c8b32d33a5244f1e5947304550403b63930415 # v4
+        with:
+          version: v1.35.0
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        with:
+          go-version: '1.26'
+          cache-dependency-path: tools/go.sum
+      - name: Build locked validators
+        working-directory: tools
+        run: |
+          mkdir -p "$RUNNER_TEMP/bin"
+          go build -mod=readonly -o "$RUNNER_TEMP/bin/actionlint" github.com/rhysd/actionlint/cmd/actionlint
+          go build -mod=readonly -o "$RUNNER_TEMP/bin/kubeconform" github.com/yannh/kubeconform/cmd/kubeconform
+          echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
+      - run: actionlint
+      - run: shellcheck deploy/setup.sh
+      - name: Strict Kubernetes and Argo CD schemas
+        run: |
+          for environment in dev prod; do
+            kubectl kustomize "k8s/overlays/$environment" | kubeconform -strict -summary -kubernetes-version 1.35.0
+          done
+          kubeconform -strict -summary -schema-location 'https://raw.githubusercontent.com/datreeio/CRDs-catalog/d373c2da9702bc9509a004db83e57263fe3bdfc1/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json' gitops/
+  source-security:
+    name: IaC and secret scanning
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: aquasecurity/trivy-action@a9c7b0f06e461e9d4b4d1711f154ee024b8d7ab8 # v0.36.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          scanners: misconfig,secret
+          severity: CRITICAL,HIGH
+          exit-code: '1'
+          skip-dirs: node_modules,.terraform
+  browser:
+    name: Containerized browser checkout
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Generate disposable credentials
+        run: |
+          password="$(openssl rand -hex 24)"
+          session="$(openssl rand -hex 32)"
+          echo "::add-mask::$password"
+          echo "::add-mask::$session"
+          echo "DB_PASSWORD=$password" >> "$GITHUB_ENV"
+          echo "JWT_SECRET=$session" >> "$GITHUB_ENV"
+      - run: docker compose config --quiet
+      - run: docker compose up --build --wait --wait-timeout 120
+      - run: docker compose exec -T -e ALLOW_DEMO_SEED=true backend node seed.js
+      - run: npm ci --ignore-scripts --prefix frontend
+      - run: npx --no-install playwright install --with-deps chromium
+        working-directory: frontend
+      - run: npm --prefix frontend run test:e2e
+      - if: failure()
+        run: docker compose logs --no-color
+      - if: always()
+        run: docker compose down --volumes
+  publish:
+    name: Publish (${{ matrix.component }})
+    if: >-
+      (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+      (github.event_name == 'pull_request' && vars.PUBLISH_REVIEW_IMAGES == 'true' &&
+      github.actor == github.repository_owner && github.event.pull_request.head.repo.full_name == github.repository)
+    needs: [application, integration, containers, configuration, source-security, browser]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
     permissions:
       contents: read
-      packages: write # Needed to push to GHCR
+      packages: write
     strategy:
       matrix:
-        include:
-          - component: backend
-            path: backend
-          - component: frontend
-            path: frontend
-    outputs:
-      image_tag: ${{ steps.meta.outputs.version }}
+        component: [backend, frontend]
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: List repository root (diagnostic)
-        run: |
-          echo "PWD: $(pwd)"
-          ls -la
-
-      - name: Create expected component symlinks (fallback)
-        run: |
-          if [ ! -d backend ] && [ -d services/backend ]; then
-            ln -s services/backend backend
-            echo "Created symlink backend -> services/backend"
-          fi
-          if [ ! -d frontend ] && [ -d web/frontend ]; then
-            ln -s web/frontend frontend
-            echo "Created symlink frontend -> web/frontend"
-          fi
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
+      - uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Extract metadata (tags, labels)
-        id: meta
-        uses: docker/metadata-action@v5
+      - id: repository
+        run: echo "name=${GITHUB_REPOSITORY,,}" >> "$GITHUB_OUTPUT"
+      - id: image
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
         with:
-          images: ghcr.io/${{ github.repository }}/cravedrop-${{ matrix.component }}
-          tags: |
-            type=sha,prefix=
-            type=ref,event=branch
-            type=raw,value=latest,enable={{is_default_branch}}
-
-      - name: Build and push image
-        uses: docker/build-push-action@v6
-        with:
-          context: ./${{ matrix.path }}
-          file: ./${{ matrix.path }}/Dockerfile
-          push: ${{ github.event_name != 'pull_request' }}
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          context: ./${{ matrix.component }}
+          push: true
+          tags: ghcr.io/${{ steps.repository.outputs.name }}/cravedrop-${{ matrix.component }}:${{ github.sha }}
           provenance: true
           sbom: true
-
-  # ==============================================================
-  # STAGE 4: Container Image Scanning (Trivy)
-  # ==============================================================
-  image-scan:
-    name: "🔬 Scan ${{ matrix.component }} Image"
-    runs-on: ubuntu-latest
-    needs: build
-    strategy:
-      matrix:
-        include:
-          - component: backend
-            path: backend
-          - component: frontend
-            path: frontend
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: List repository root (diagnostic)
-        run: |
-          echo "PWD: $(pwd)"
-          ls -la
-
-      - name: Create expected component symlinks (fallback)
-        run: |
-          if [ ! -d backend ] && [ -d services/backend ]; then
-            ln -s services/backend backend
-            echo "Created symlink backend -> services/backend"
-          fi
-          if [ ! -d frontend ] && [ -d web/frontend ]; then
-            ln -s web/frontend frontend
-            echo "Created symlink frontend -> web/frontend"
-          fi
-
-      - name: Build image for scanning
-        run: |
-          docker build -t cravedrop-${{ matrix.component }}:scan ./${{ matrix.path }}
-
-      - name: Run Trivy vulnerability scanner
-        uses: aquasecurity/trivy-action@master
-        with:
-          image-ref: "cravedrop-${{ matrix.component }}:scan"
-          format: "table"
-          exit-code: "1"
-          ignore-unfixed: true
-          vuln-type: "os,library"
-          severity: "CRITICAL,HIGH"
-          timeout: "10m"
-
-  # ==============================================================
-  # STAGE 5: IaC Security Scan (Checkov) — Terraform + K8s
-  # ==============================================================
-  iac-scan:
-    name: "🏗️ IaC Security Scan"
-    runs-on: ubuntu-latest
-    needs: lint
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Run Checkov on Terraform
-        uses: bridgecrewio/checkov-action@v12
-        with:
-          directory: terraform/
-          framework: terraform
-          soft_fail: false
-          skip_check: CKV_AWS_39,CKV_AWS_58  # Public EKS endpoint (intentional for dev)
-          output_format: cli
-
-      - name: Run Checkov on Kubernetes manifests
-        uses: bridgecrewio/checkov-action@v12
-        with:
-          directory: k8s/
-          framework: kubernetes
-          soft_fail: true  # Soft fail for K8s (some checks may not apply)
-          output_format: cli
-
-  # ==============================================================
-  # STAGE 6: Dockerfile Lint (Hadolint)
-  # ==============================================================
-  dockerfile-lint:
-    name: "📋 Dockerfile Lint"
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        include:
-          - component: backend
-            path: backend
-          - component: frontend
-            path: frontend
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: List repository root (diagnostic)
-        run: |
-          echo "PWD: $(pwd)"
-          ls -la
-
-      - name: Create expected component symlinks (fallback)
-        run: |
-          if [ ! -d backend ] && [ -d services/backend ]; then
-            ln -s services/backend backend
-            echo "Created symlink backend -> services/backend"
-          fi
-          if [ ! -d frontend ] && [ -d web/frontend ]; then
-            ln -s web/frontend frontend
-            echo "Created symlink frontend -> web/frontend"
-          fi
-
-      - name: Run Hadolint
-        uses: hadolint/hadolint-action@v3.1.0
-        with:
-          dockerfile: ${{ matrix.path }}/Dockerfile
-          failure-threshold: warning
-
-  # ==============================================================
-  # STAGE 7: Update K8s Manifest with New Image Tag
-  # Only runs on push to main (not on PRs)
-  # ==============================================================
-  update-manifest:
-    name: "🚀 Update K8s Manifest"
-    runs-on: ubuntu-latest
-    needs: [build, image-scan, iac-scan, dockerfile-lint]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    permissions:
-      contents: write # Needed to push manifest changes
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          fetch-depth: 0
-
-      - name: Get short SHA
-        id: sha
-        run: echo "short=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
-
-      - name: Update K8s manifest with new image tags
-        run: |
-          IMAGE_TAG=${{ steps.sha.outputs.short }}
-
-          # Update backend image
-          sed -i "s|image: .*cravedrop-backend.*|image: ${BACKEND_IMAGE}:${IMAGE_TAG}|g" k8s/cravedrop.yaml
-          sed -i "s|image: BACKEND_IMAGE_PLACEHOLDER|image: ${BACKEND_IMAGE}:${IMAGE_TAG}|g" k8s/cravedrop.yaml
-
-          # Update frontend image
-          sed -i "s|image: .*cravedrop-frontend.*|image: ${FRONTEND_IMAGE}:${IMAGE_TAG}|g" k8s/cravedrop.yaml
-          sed -i "s|image: FRONTEND_IMAGE_PLACEHOLDER|image: ${FRONTEND_IMAGE}:${IMAGE_TAG}|g" k8s/cravedrop.yaml
-
-          echo "✅ Updated images to tag: ${IMAGE_TAG}"
-          grep "image:" k8s/cravedrop.yaml
-
-      - name: Commit and push manifest update
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add k8s/cravedrop.yaml
-          git diff --cached --quiet || git commit -m "ci: update k8s images to ${{ steps.sha.outputs.short }} [skip ci]"
-          git push
+      - name: Record release digest
+        env:
+          DIGEST: ${{ steps.image.outputs.digest }}
+          COMPONENT: ${{ matrix.component }}
+        run: echo "$COMPONENT image digest - $DIGEST" | tee -a "$GITHUB_STEP_SUMMARY"

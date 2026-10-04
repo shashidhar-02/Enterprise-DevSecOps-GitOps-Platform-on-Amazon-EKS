@@ -1,0 +1,29 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: cravedrop-dev
+  namespace: argocd
+spec:
+  project: cravedrop
+  source:
+    repoURL: https://github.com/shashidhar-02/Enterprise-DevSecOps-GitOps-Platform-on-Amazon-EKS.git
+    targetRevision: main
+    path: k8s/overlays/dev
+  destination: {server: 'https://kubernetes.default.svc', namespace: cravedrop-dev}
+  syncPolicy:
+    syncOptions: [PruneLast=true]
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: cravedrop-prod
+  namespace: argocd
+spec:
+  project: cravedrop
+  source:
+    repoURL: https://github.com/shashidhar-02/Enterprise-DevSecOps-GitOps-Platform-on-Amazon-EKS.git
+    targetRevision: main
+    path: k8s/overlays/prod
+  destination: {server: 'https://kubernetes.default.svc', namespace: cravedrop-prod}
+  syncPolicy:
+    syncOptions: [PruneLast=true]

@@ -1,7 +1,10 @@
 node_modules
-npm-debug.log
 dist
 .git
-.gitignore
-Dockerfile
-.dockerignore
+.env
+.env.*
+test-results
+playwright-report
+e2e
+test
+README.md

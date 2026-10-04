@@ -1,216 +1,167 @@
+# Enterprise DevSecOps GitOps Platform on Amazon EKS
 
+[![Platform Quality](https://github.com/shashidhar-02/Enterprise-DevSecOps-GitOps-Platform-on-Amazon-EKS/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/shashidhar-02/Enterprise-DevSecOps-GitOps-Platform-on-Amazon-EKS/actions/workflows/ci-cd.yml)
+[![CodeQL](https://github.com/shashidhar-02/Enterprise-DevSecOps-GitOps-Platform-on-Amazon-EKS/actions/workflows/codeql.yml/badge.svg)](https://github.com/shashidhar-02/Enterprise-DevSecOps-GitOps-Platform-on-Amazon-EKS/actions/workflows/codeql.yml)
 
+**CraveDrop** is a React food-ordering application with a Node.js API and
+PostgreSQL, packaged with a tested container and GitOps delivery baseline.
+Application, Terraform, Kubernetes and CI configuration live together here.
 
-<div align="center">
-
-# 🍔 CraveDrop
-
-**A Gen-Z vibe food delivery platform built with a modern 3-tier architecture.** *React Frontend • Node.js API • PostgreSQL Database*
-
-<br />
-
-![React](https://img.shields.io/badge/React-18-61DAFB?style=for-the-badge&logo=react&logoColor=black)
-![Node.js](https://img.shields.io/badge/Node.js-20-339933?style=for-the-badge&logo=node.js&logoColor=white)
-![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?style=for-the-badge&logo=postgresql&logoColor=white)
-![Nginx](https://img.shields.io/badge/Nginx-009639?style=for-the-badge&logo=nginx&logoColor=white)
-![AWS EC2](https://img.shields.io/badge/AWS_EC2-FF9900?style=for-the-badge&logo=amazonaws&logoColor=white)
-
-<br />
-
-<!-- 📸 Replace the link below with a screenshot of your actual app! -->
-<img src="https://drive.google.com/uc?export=view&id=1RTznP4b9VHiPdWqDDd-gNgXVOHiYIP4Z" alt="CraveDrop UI Screenshot">
-
-</div>
-
----
-
-> [!IMPORTANT]
-> **Looking for the full DevSecOps implementation?**
-> Switch to the [`devops`](../../tree/devops) branch for Docker, Kubernetes (EKS Auto Mode), Terraform, CI/CD with GitHub Actions, container security scanning, and more.
->
-> ```bash
-> git checkout devops
-> 
-
-
-
----
-
-## ✨ Features
-
-* 🍕 **Browse Restaurants:** Explore full menus, categories, and vibrant UI cards.
-* 🛒 **Place Orders:** Seamless checkout experience and delivery tracking.
-* ⭐ **Leave Reviews:** Rate your favorite meals and share your foodie opinions.
-* 🗑️ **Manage Platform:** Cancel active orders or remove restaurants dynamically.
-* 🎨 **Cinematic UI:** Gen-Z dark mode with glassmorphism, smooth gradients, and clean aesthetics.
-
-## 🏗️ Architecture
+## Architecture
 
 ```text
-┌──────────────┐     ┌──────────────┐     ┌──────────────┐
-│   Frontend   │────▶│   Backend    │────▶│  PostgreSQL  │
-│   (React +   │◀────│  (Node.js +  │◀────│              │
-│    Nginx)    │     │   Express)   │     │              │
-│   Port 80    │     │  Port 5000   │     │  Port 5432   │
-└──────────────┘     └──────────────┘     └──────────────┘
+Browser → HTTPS ALB → frontend Nginx :8080 → backend API :5000 → PostgreSQL :5432
+                         /api + /socket.io         private database, verified TLS
 
-```
-## 📁 Project Structure
-
-```text
-CraveDrop/
-├── .github/workflows/       # CI/CD & AI Security Pipelines
-├── frontend/                # React (Vite) frontend
-│   ├── src/                 # React components & pages
-│   ├── Dockerfile           # Production containerization
-│   ├── nginx.conf           # Secure Nginx config for Docker
-│   └── package.json
-├── backend/                 # Node.js Express API
-│   ├── src/                 # API Routes (Orders, Restaurants, Reviews)
-│   ├── Dockerfile           # Secure multi-stage build
-│   └── package.json
-├── deploy/                  # EC2 bare-metal deployment scripts
-│   ├── setup.sh             # One-click Ubuntu EC2 setup script
-│   └── cravedrop-nginx.conf # Nginx reverse proxy config
-└── README.md
-
+PR → lint + tests + audits + CodeQL + container/IaC scanning + schema validation
+main → gated GHCR publication → reviewed image-digest PR → Argo CD sync
+Terraform → VPC, encrypted logs, private EKS API, EKS Auto Mode, explicit access roles
 ```
 
----
+The application supports signup/login, restaurant search and menus, catalogue-priced
+orders, authenticated order tracking, and reviews. Ownership is enforced in the
+API. It uses one-day HttpOnly session cookies and salted scrypt password hashes.
+Delivery (₹45) and taxes (₹20) are fixed demonstration charges; payment processing
+and dispatch automation are not implemented.
 
-## 🚀 Deploy on AWS EC2
+## Quick start: Docker Compose
 
-### Prerequisites
-
-* An AWS EC2 instance running **Ubuntu 22.04+**
-* Security Group allowing inbound traffic on ports **22** (SSH) and **80** (HTTP)
-* SSH access to the instance
-
-### Step 1: Transfer the Code to EC2
+Prerequisites: Docker with Compose v2, Git, and Node.js 24 for development/testing.
+From the repository root:
 
 ```bash
-# From your local machine
-scp -r -i your-key.pem ./CraveDrop ubuntu@<EC2_PUBLIC_IP>:~/CraveDrop
-
+cp .env.example .env
+node -e "console.log(require('node:crypto').randomBytes(32).toString('hex'))"
+# Set a newly generated JWT_SECRET and a separate DB_PASSWORD in .env.
+docker compose up --build --wait
+docker compose exec -T -e ALLOW_DEMO_SEED=true backend node seed.js
 ```
 
-### Step 2: SSH into the Instance
+Open **http://localhost:8080** and create an account (password: 12–128 characters).
+The seed creates a small sample menu only when the catalogue is empty. It never
+truncates existing records and refuses to run with `NODE_ENV=production`.
+`bash deploy/setup.sh` is an equivalent local Compose launcher.
+
+Compose binds ports to loopback and persists the database in a named volume.
+It deliberately uses development cookie settings for local HTTP. Stop with
+`docker compose down`; `docker compose down --volumes` also deletes local data.
+Changing `DB_PASSWORD` does not change the password in an existing PostgreSQL volume.
+
+## Develop without containers
+
+Create a PostgreSQL database and an application-owned database role, then:
 
 ```bash
-ssh -i your-key.pem ubuntu@<EC2_PUBLIC_IP>
-
+cp backend/.env.example backend/.env
+# Fill in DB_* and a generated JWT_SECRET. Keep NODE_ENV=development locally.
+npm ci --ignore-scripts --prefix backend
+npm ci --ignore-scripts --prefix frontend
+npm --prefix backend run dev
+# In another terminal:
+npm --prefix frontend run dev
 ```
 
-### Step 3: Run the Setup Script
+Vite serves http://localhost:3000 and proxies the API and authenticated WebSockets
+to port 5000. Containers serve both through the same frontend origin. Tokens are
+not stored in browser localStorage. Production requires HTTPS and an explicit
+`ALLOWED_ORIGINS` matching the public origin.
 
-The `deploy/setup.sh` script installs everything and configures the app automatically:
+## Validation
 
 ```bash
-cd ~/CraveDrop
-chmod +x deploy/setup.sh
-./deploy/setup.sh
-
+npm --prefix backend run lint
+npm --prefix backend test
+npm audit --prefix backend --audit-level=moderate
+npm --prefix frontend run lint
+npm --prefix frontend test
+npm --prefix frontend run build
+npm audit --prefix frontend --audit-level=moderate
+terraform fmt -check -recursive terraform/
+terraform -chdir=terraform init -backend=false -input=false -lockfile=readonly
+terraform -chdir=terraform validate
 ```
 
-**This script will automatically:**
-
-1. Update system packages.
-2. Install **Node.js 20.x**, **PostgreSQL 16**, **Nginx**, and **PM2**.
-3. Create the database (`cravedrop_db`) and secure user profile.
-4. Install backend dependencies & generate the `.env` file.
-5. Build the optimized React frontend.
-6. Configure Nginx as a secure reverse proxy.
-7. Start the backend with PM2 (ensuring it auto-restarts on crash/reboot).
-
-### Step 4: Access the App
-
-Open your browser and navigate to your public IP:
-
-```text
-http://<EC2_PUBLIC_IP>
-
-```
-
-### Useful Server Commands
+Integration tests require a **disposable** database named `cravedrop_test`
+(optionally suffixed `_lettersandnumbers`). They reset its tables:
 
 ```bash
-pm2 status                            # Check backend status
-pm2 logs                              # View live backend logs
-pm2 restart all                       # Restart backend
-sudo systemctl restart nginx          # Restart Nginx server
-sudo -u postgres psql -d cravedrop_db # Connect to production database
-
+NODE_ENV=test DB_NAME=cravedrop_test DB_HOST=localhost DB_PORT=5432 \
+  DB_USER=your_test_role DB_PASSWORD=your_test_password \
+  npm --prefix backend run test:integration
 ```
 
----
-
-## 🧑‍💻 Local Development (Without Docker)
-
-### Prerequisites
-
-* Node.js 20+
-* PostgreSQL 16+
-
-### 1. Backend Setup
+Browser tests use the running Compose stack and seeded catalogue:
 
 ```bash
-cd backend
-npm install
-
-# Create a .env file (or export these variables)
-export DB_HOST=localhost
-export DB_PORT=5432
-export DB_USER=cravedrop_user
-export DB_PASSWORD=cravedrop_pass_2026
-export DB_NAME=cravedrop_db
-export PORT=5000
-
-npm start
-
+npm --prefix frontend exec -- playwright install chromium
+npm --prefix frontend run test:e2e
 ```
 
-### 2. Frontend Setup
+CI exercises a real PostgreSQL service, socket authorization, the built frontend
+and backend containers, and Chromium signup/checkout/session restoration. It
+rejects failed lint, audits, schemas and high/critical container findings.
+Validation tools are locked in `tools/go.mod` and `tools/go.sum`; Terraform
+providers are locked in `terraform/.terraform.lock.hcl`.
 
-```bash
-cd frontend
-npm install
-npm run dev
+## EKS and GitOps
 
-```
+See [deployment and operations](docs/operations.md) for the complete bootstrap,
+secrets, releases, migration and rollback process.
 
-> **Note:** The Vite dev server starts on `http://localhost:3000` and automatically proxies all `/api` requests to the backend at `http://localhost:5000`.
-
----
-
-## 📡 API Endpoints
-
-| Method | Endpoint | Description |
-| --- | --- | --- |
-| `GET` | `/api/health` | Health check |
-| `GET` | `/api/restaurants` | Get all restaurants with review counts |
-| `GET` | `/api/restaurants/:id` | Get single restaurant with its reviews |
-| `POST` | `/api/restaurants` | Add a new restaurant |
-| `PUT` | `/api/restaurants/:id` | Update restaurant details |
-| `DELETE` | `/api/restaurants/:id` | Remove a restaurant |
-| `POST` | `/api/orders` | Place a new food order |
-| `GET` | `/api/orders/user/:userId` | Get order history for a specific user |
-| `DELETE` | `/api/orders/:id` | Cancel an order |
-| `GET` | `/api/reviews/restaurant/:id` | Get reviews for a specific restaurant |
-| `POST` | `/api/reviews` | Leave a review and rating |
-| `DELETE` | `/api/reviews/:id` | Delete a review |
-
----
-
-## 🌿 Branch Strategy
-
-| Branch | Purpose |
+| Path | Purpose |
 | --- | --- |
-| **`main`** | Source code + EC2 bare-metal deployment |
-| **`devops`** | Full DevSecOps — Docker, Kubernetes (EKS), Terraform, CI/CD pipeline, security scanning |
+| `backend/`, `frontend/` | Application, unit/integration/browser tests, locked dependencies |
+| `compose.yaml` | Reproducible local stack |
+| `terraform/` | Three-AZ VPC, EKS Auto Mode, KMS/logging, explicit administrator roles |
+| `k8s/base/` | Restricted workloads, probes, disruption budgets and network policies |
+| `k8s/overlays/dev`, `k8s/overlays/prod` | Environment-specific deployment configuration |
+| `gitops/` | Restricted Argo CD project and applications |
+| `.github/` | Pinned workflows, Dependabot, ownership and contribution templates |
 
----
+Cloud bootstrap requires an existing encrypted/versioned S3 state bucket, IAM
+operator roles, access to the private cluster API, a managed PostgreSQL database,
+Argo CD, an Auto Mode ALB IngressClass and a matching ACM certificate. Terraform
+does not provision the database, DNS, state bucket or Argo CD. Production examples
+use `cravedrop.example.com`; configure your domain, origin, VPC CIDRs and image
+digests before syncing. The base references verified GHCR review-image digests;
+review/promote them for your environment and configure package pull access.
 
+GitHub Actions publishes commit-tagged images after main passes all platform
+checks. Owner-authored, same-repository PRs can also publish tested review images
+when the `PUBLISH_REVIEW_IMAGES` repository variable is explicitly enabled.
+It records image digests and provenance/SBOM metadata. Release image
+changes go through a PR; workflows do not push deployment edits directly to main.
+Argo CD sync is operator-initiated by default.
 
-```
+## API
 
-```
+All endpoints use `/api`. Catalogue reads and health probes are public; writes
+and order access require authentication.
+
+| Method/path | Access and purpose |
+| --- | --- |
+| `GET /health`, `GET /ready` | Liveness; database-dependent readiness |
+| `POST /auth/signup`, `/auth/login`, `/auth/logout` | Session lifecycle |
+| `GET /auth/me` | Current authenticated account |
+| `GET /auth/csrf` | Signed, session-bound CSRF token; send it in `X-CSRF-Token` for writes |
+| `GET /restaurants`, `GET /restaurants/:id`, `GET /restaurants/:id/dishes` | Bounded catalogue/search/menu reads |
+| `POST /restaurants` | Create a restaurant owned by the current account |
+| `PUT/DELETE /restaurants/:id`, `POST /restaurants/:id/dishes` | Owner or administrator |
+| `POST /orders` | Submit `restaurant_id` and `items: [{id, quantity}]`; server calculates all prices |
+| `GET /orders/:id`, `GET /orders/user/:userId` | Own orders only |
+| `DELETE /orders/:id` | Cancel an owned early-stage order; preserves history |
+| `PUT /orders/:id/status` | Administrator; validated status values |
+| `GET /reviews/restaurant/:id`, `POST /reviews`, `DELETE /reviews/:id` | Public reads; authenticated creation; owner/admin deletion |
+
+Register the intended administrator account normally, then run
+`ADMIN_EMAIL=your-account@example.com node scripts/admin.js` from `backend/`
+with authorized database credentials. Public signup cannot grant privileges.
+Restaurant owners can populate menus through `POST /restaurants/:id/dishes`
+with `name`, `price`, `is_veg`, optional `description` and `image_url`.
+
+## Contributing and security
+
+Read [CONTRIBUTING.md](CONTRIBUTING.md) and [SECURITY.md](SECURITY.md).
+The original Apache 2.0 license is preserved in [LICENSE](LICENSE).
+Existing installations must follow the credential rotation and account/data
+migration notes before adopting the new authentication contract.

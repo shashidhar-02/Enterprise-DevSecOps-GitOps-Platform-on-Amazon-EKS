@@ -1,0 +1,51 @@
+services:
+  database:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: cravedrop
+      POSTGRES_DB: cravedrop
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?}
+    volumes:
+      - database:/var/lib/postgresql/data
+    ports:
+      - "127.0.0.1:5432:5432"
+    healthcheck:
+      test: [CMD-SHELL, "pg_isready -U cravedrop -d cravedrop"]
+      interval: 5s
+      timeout: 5s
+      retries: 15
+    security_opt: [no-new-privileges:true]
+  backend:
+    build: ./backend
+    init: true
+    environment:
+      NODE_ENV: development
+      PORT: 5000
+      DB_HOST: database
+      DB_PORT: 5432
+      DB_USER: cravedrop
+      DB_NAME: cravedrop
+      DB_PASSWORD: ${DB_PASSWORD:?}
+      JWT_SECRET: ${JWT_SECRET:?}
+      ALLOWED_ORIGINS: http://localhost:8080,http://localhost:3000
+      TRUST_PROXY_HOPS: 1
+    depends_on:
+      database:
+        condition: service_healthy
+    ports: ["127.0.0.1:5000:5000"]
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+  frontend:
+    build: ./frontend
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports: ["127.0.0.1:8080:8080"]
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+volumes:
+  database:
