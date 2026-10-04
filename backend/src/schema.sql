@@ -1,0 +1,48 @@
+CREATE TABLE IF NOT EXISTS users (
+  id SERIAL PRIMARY KEY, name VARCHAR(255) NOT NULL,
+  email VARCHAR(255) UNIQUE NOT NULL, password VARCHAR(255) NOT NULL,
+  role TEXT NOT NULL DEFAULT 'customer' CHECK (role IN ('customer', 'admin')),
+  created_at TIMESTAMP DEFAULT NOW()
+);
+ALTER TABLE users ADD COLUMN IF NOT EXISTS role TEXT NOT NULL DEFAULT 'customer';
+CREATE TABLE IF NOT EXISTS addresses (
+  id SERIAL PRIMARY KEY, user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+  street TEXT NOT NULL, city VARCHAR(100) NOT NULL, type VARCHAR(50) DEFAULT 'Home'
+);
+CREATE TABLE IF NOT EXISTS restaurants (
+  id SERIAL PRIMARY KEY, name VARCHAR(255) NOT NULL, description TEXT, category VARCHAR(100) NOT NULL,
+  emoji VARCHAR(10) DEFAULT '🍔', image_url TEXT, rating DECIMAL(3,1) DEFAULT 4.0,
+  delivery_time VARCHAR(50) DEFAULT '30-40 mins', cuisine_type VARCHAR(255),
+  owner_id INTEGER REFERENCES users(id), created_at TIMESTAMP DEFAULT NOW(), updated_at TIMESTAMP DEFAULT NOW()
+);
+ALTER TABLE restaurants ADD COLUMN IF NOT EXISTS image_url TEXT;
+ALTER TABLE restaurants ADD COLUMN IF NOT EXISTS rating DECIMAL(3,1) DEFAULT 4.0;
+ALTER TABLE restaurants ADD COLUMN IF NOT EXISTS delivery_time VARCHAR(50) DEFAULT '30-40 mins';
+ALTER TABLE restaurants ADD COLUMN IF NOT EXISTS cuisine_type VARCHAR(255);
+ALTER TABLE restaurants ADD COLUMN IF NOT EXISTS owner_id INTEGER REFERENCES users(id);
+CREATE TABLE IF NOT EXISTS dishes (
+  id SERIAL PRIMARY KEY, restaurant_id INTEGER REFERENCES restaurants(id) ON DELETE CASCADE,
+  name VARCHAR(255) NOT NULL, description TEXT, price DECIMAL(10,2) NOT NULL CHECK (price >= 0),
+  is_veg BOOLEAN DEFAULT true, image_url TEXT, created_at TIMESTAMP DEFAULT NOW()
+);
+CREATE TABLE IF NOT EXISTS orders (
+  id SERIAL PRIMARY KEY, user_id VARCHAR(100) NOT NULL,
+  restaurant_id INTEGER REFERENCES restaurants(id) ON DELETE RESTRICT,
+  items JSONB NOT NULL, total_amount DECIMAL(10,2) NOT NULL DEFAULT 0,
+  delivery_fee DECIMAL(10,2) DEFAULT 45, taxes DECIMAL(10,2) DEFAULT 20,
+  status VARCHAR(50) DEFAULT 'Order Received', created_at TIMESTAMP DEFAULT NOW(), updated_at TIMESTAMP DEFAULT NOW()
+);
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS delivery_fee DECIMAL(10,2) DEFAULT 45;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS taxes DECIMAL(10,2) DEFAULT 20;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT NOW();
+ALTER TABLE orders DROP CONSTRAINT IF EXISTS orders_restaurant_id_fkey;
+ALTER TABLE orders ADD CONSTRAINT orders_restaurant_id_fkey FOREIGN KEY (restaurant_id) REFERENCES restaurants(id) ON DELETE RESTRICT;
+CREATE TABLE IF NOT EXISTS reviews (
+  id SERIAL PRIMARY KEY, restaurant_id INTEGER REFERENCES restaurants(id) ON DELETE CASCADE,
+  user_id INTEGER REFERENCES users(id), author VARCHAR(100) NOT NULL,
+  rating INTEGER CHECK (rating BETWEEN 1 AND 5), comment TEXT NOT NULL, created_at TIMESTAMP DEFAULT NOW()
+);
+ALTER TABLE reviews ADD COLUMN IF NOT EXISTS user_id INTEGER REFERENCES users(id);
+CREATE INDEX IF NOT EXISTS orders_user_id_idx ON orders(user_id);
+CREATE INDEX IF NOT EXISTS reviews_restaurant_id_idx ON reviews(restaurant_id);
+CREATE INDEX IF NOT EXISTS dishes_restaurant_id_idx ON dishes(restaurant_id);

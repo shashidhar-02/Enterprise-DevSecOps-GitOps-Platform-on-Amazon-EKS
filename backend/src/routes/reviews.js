@@ -1,59 +1,23 @@
 const express = require('express');
-const router = express.Router();
-const { pool } = require('../db');
+const { wrap, positiveId, text, HttpError } = require('../security');
 
-// GET reviews for a restaurant
-router.get('/restaurant/:restaurantId', async (req, res) => {
-  try {
-    const result = await pool.query(
-      'SELECT * FROM reviews WHERE restaurant_id = $1 ORDER BY created_at DESC',
-      [req.params.restaurantId]
-    );
+module.exports = (pool, security) => {
+  const router = express.Router();
+  router.get('/restaurant/:restaurantId', wrap(async (req, res) => {
+    const result = await pool.query('SELECT * FROM reviews WHERE restaurant_id = $1 ORDER BY created_at DESC LIMIT 100', [positiveId(req.params.restaurantId)]);
     res.json(result.rows);
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Failed to fetch reviews' });
-  }
-});
-
-// CREATE review
-router.post('/', async (req, res) => {
-  const { restaurant_id, author, rating, comment } = req.body;
-
-  if (!restaurant_id || !rating || !comment) {
-    return res.status(400).json({ error: 'Restaurant ID, rating, and comment are required' });
-  }
-
-  try {
-    // Verify restaurant exists
-    const restaurantCheck = await pool.query('SELECT id FROM restaurants WHERE id = $1', [restaurant_id]);
-    if (restaurantCheck.rows.length === 0) {
-      return res.status(404).json({ error: 'Restaurant not found' });
-    }
-
-    const result = await pool.query(
-      'INSERT INTO reviews (restaurant_id, author, rating, comment) VALUES ($1, $2, $3, $4) RETURNING *',
-      [restaurant_id, author || 'Hungry Foodie', rating, comment]
-    );
+  }));
+  router.post('/', security.authenticate, wrap(async (req, res) => {
+    if (!Number.isInteger(req.body.rating) || req.body.rating < 1 || req.body.rating > 5) throw new HttpError(400, 'Rating must be 1 to 5');
+    const result = await pool.query('INSERT INTO reviews (restaurant_id, author, user_id, rating, comment) VALUES ($1, $2, $3, $4, $5) RETURNING *',
+      [positiveId(req.body.restaurant_id), req.user.name, req.user.id, req.body.rating, text(req.body.comment, 2000)]);
     res.status(201).json(result.rows[0]);
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Failed to post review' });
-  }
-});
-
-// DELETE review
-router.delete('/:id', async (req, res) => {
-  try {
-    const result = await pool.query('DELETE FROM reviews WHERE id = $1 RETURNING *', [req.params.id]);
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Review not found' });
-    }
-    res.json({ message: 'Review deleted 🗑️' });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Failed to delete review' });
-  }
-});
-
-module.exports = router;
+  }));
+  router.delete('/:id', security.authenticate, wrap(async (req, res) => {
+    const result = await pool.query('DELETE FROM reviews WHERE id = $1 AND (user_id = $2 OR $3) RETURNING id',
+      [positiveId(req.params.id), req.user.id, req.user.role === 'admin']);
+    if (!result.rows[0]) throw new HttpError(404, 'Owned review not found');
+    res.json({ message: 'Review deleted' });
+  }));
+  return router;
+};

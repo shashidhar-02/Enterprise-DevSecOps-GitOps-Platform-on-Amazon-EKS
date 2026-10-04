@@ -1,43 +1,17 @@
-# ==============================================================
-# CraveDrop Frontend - Production Dockerfile
-# ==============================================================
-
-# ---- Build stage ----
-FROM node:20-alpine AS build
+FROM node:24-alpine@sha256:ebfe2f90462722a7a4de65e91990e97fe0d401c70e0e762c5b53302f905ec1c1 AS build
 WORKDIR /app
-
-# Copy dependencies first for better caching
-COPY package.json package-lock.json *./
-RUN npm ci && npm cache clean --force
-
-# Copy the rest of the source code and build
-COPY src/ ./src
-COPY public/ ./public
-COPY vite.config.js index.html ./
+COPY package.json package-lock.json ./
+RUN npm ci --ignore-scripts && npm cache clean --force
+COPY . .
 RUN npm run build
 
-# ---- Production stage ----
-FROM nginx:1.27-alpine AS production
-
-# Security: remove default nginx config and default html files
-RUN rm -rf /etc/nginx/conf.d/default.conf /usr/share/nginx/html/*
-
-# Copy our custom CraveDrop nginx config
+FROM nginxinc/nginx-unprivileged:stable-alpine@sha256:ed04ec1ff34502c339ee5c3ae3f855442398edc1d05591e2b98981dcbbd20b1e AS production
+USER 0
+RUN apk add --no-cache --upgrade pcre2=10.49-r0
 COPY nginx.conf /etc/nginx/conf.d/default.conf
-
-# Copy built frontend assets from the build stage
 COPY --from=build /app/dist /usr/share/nginx/html
-
-# Security: Set up permissions so Nginx can run as a non-root user
-RUN chown -R nginx:nginx /usr/share/nginx/html && \
-    chown -R nginx:nginx /var/cache/nginx && \
-    chown -R nginx:nginx /var/log/nginx && \
-    touch /var/run/nginx.pid && \
-    chown -R nginx:nginx /var/run/nginx.pid
-
-# Switch to non-root user
-USER nginx
-
-EXPOSE 80
-
-CMD ["nginx", "-g", "daemon off;"]
+USER 101:101
+EXPOSE 8080
+HEALTHCHECK --interval=30s --timeout=5s CMD wget -q -O /dev/null http://127.0.0.1:8080/healthz || exit 1
+ENTRYPOINT ["nginx"]
+CMD ["-g", "daemon off;"]

@@ -1,46 +1,17 @@
-# ==============================================================
-# CraveDrop Backend - Production Dockerfile
-# ==============================================================
-
-# ---- Build stage ----
-FROM node:20-alpine AS build
+FROM node:24-alpine@sha256:ebfe2f90462722a7a4de65e91990e97fe0d401c70e0e762c5b53302f905ec1c1 AS dependencies
 WORKDIR /app
+COPY package.json package-lock.json ./
+RUN npm ci --omit=dev --ignore-scripts && npm cache clean --force
 
-# Copy dependency files
-COPY package.json package-lock.json* ./
-
-# Install only production dependencies
-RUN npm ci --only=production && npm cache clean --force
-
-# ---- Production stage ----
-FROM node:20-alpine AS production
-
-# Security: run as non-root user
-RUN addgroup -S appgroup && adduser -S appuser -G appgroup
-
-# Security: remove unnecessary packages and add dumb-init
-# hadolint ignore=DL3018
-RUN apk add --no-cache your-package-name
-
+FROM node:24-alpine@sha256:ebfe2f90462722a7a4de65e91990e97fe0d401c70e0e762c5b53302f905ec1c1 AS production
+RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx /opt/yarn* /usr/local/bin/yarn*
+ENV NODE_ENV=production
 WORKDIR /app
-
-# Copy only production dependencies from build stage
-COPY --from=build /app/node_modules ./node_modules
-
-# Copy source code
-COPY src/ ./src/
-# Copy package.json so the app knows its own metadata if needed
-COPY package.json ./
-
-# Security: own files by non-root user
-RUN chown -R appuser:appgroup /app
-
-# Switch to non-root user
-USER appuser
-
-# Expose backend API port
+COPY --from=dependencies /app/node_modules ./node_modules
+COPY package.json seed.js ./
+COPY src ./src
+COPY scripts ./scripts
+USER 1000:1000
 EXPOSE 5000
-
-# Security: use dumb-init for proper signal handling (PID 1 problem)
-ENTRYPOINT ["dumb-init", "--"]
+HEALTHCHECK --interval=30s --timeout=5s --start-period=30s CMD node -e "fetch('http://127.0.0.1:5000/api/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"
 CMD ["node", "src/index.js"]

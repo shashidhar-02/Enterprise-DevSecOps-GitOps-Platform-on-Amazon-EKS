@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security disclosure
+    url: https://github.com/shashidhar-02/Enterprise-DevSecOps-GitOps-Platform-on-Amazon-EKS/security/policy
+    about: Report vulnerabilities privately using the security policy.
