@@ -5,18 +5,19 @@ export default defineConfig({
   plugins: [react()],
   server: {
     // Allows access from the network (crucial for Docker local dev)
-    host: '0.0.0.0',
+    host: '127.0.0.1',
     port: 3000,
     proxy: {
       // Routes all frontend /api requests to your local Node.js backend
       '/api': {
-        target: 'http://localhost:5000', 
+        target: 'http://127.0.0.1:5000',
         changeOrigin: true,
       },
+      '/socket.io': { target: 'http://127.0.0.1:5000', ws: true },
     },
   },
   preview: {
-    host: '0.0.0.0',
+    host: '127.0.0.1',
     port: 3000,
   },
 });
